@@ -1,4 +1,4 @@
-# This is a sample .tg file to parser testing.
+# This is a sample .tg file for lexer testing.
 
 const{ }
 

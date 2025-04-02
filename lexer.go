@@ -49,6 +49,7 @@ type TokenData struct {
 	keywordType     KeywordType
 	stringData      string
 	indentifierData string
+	errorType       TokenErrorType
 }
 
 type Token struct {
@@ -68,7 +69,7 @@ type Lexer struct {
 	pos  int
 
 	// TODO(kihau):
-	//     Store previous and current tokens to allow implementation of tokenPeek and tokenNext functions.
+	//     Store previous and current token to allow implementation of Peek() and PeekNext() functions.
 	//     This could also be a token ring buffer when larger token sequence is needed for parsing.
 	// prevToken Token
 	// currToken Token
@@ -113,6 +114,17 @@ func makeToken(tokenType TokenType, line LinePos) Token {
 	token := Token{
 		line:      line,
 		tokenType: tokenType,
+	}
+
+	return token
+}
+
+func makeError(errorType TokenErrorType, line LinePos) Token {
+	data := TokenData{errorType: errorType}
+	token := Token{
+		line:      line,
+		tokenType: TOKEN_ERROR,
+		tokenData: data,
 	}
 
 	return token
@@ -193,11 +205,10 @@ func NextToken(lexer *Lexer) Token {
 		switch rune {
 
 		case 0:
-			return makeToken(TOKEN_EOF, lexer.line)
+			return makeToken(TOKEN_EOF, line)
 
-		// TODO(kihau): Inavlid utf8 encoding. Set appropriate token error.
 		case 1:
-			return makeToken(TOKEN_ERROR, lexer.line)
+			return makeError(ERROR_INVALID_RUNE_ENCODING, line)
 
 		// TODO(kihau): Maybe add other white-space characters?
 		case ' ', '\t', '\v', '\r', '\n', '\f':
@@ -224,8 +235,7 @@ func NextToken(lexer *Lexer) Token {
 
 			word, ok := parseWord(lexer)
 			if !ok {
-				// TODO(kihau): Invalid word sequence / unknown rune symbol. Set appropriate token error.
-				return makeToken(TOKEN_ERROR, line)
+				return makeError(ERROR_UNKNOWN_RUNE_SYMBOL, line)
 			}
 
 			if slices.Contains(KEYWORDS, word) {
@@ -238,29 +248,43 @@ func NextToken(lexer *Lexer) Token {
 }
 
 func PrintToken(token Token) {
+	var name string
+	var data string
+
 	switch token.tokenType {
 	case TOKEN_EOF:
-		fmt.Printf("EOF\n")
+		name = "EOF"
+		data = "end of file"
 
 	case TOKEN_ERROR:
-		fmt.Printf("ERROR\n")
+		name = "ERROR"
+		data = fmt.Sprintf("%v", token.tokenData.errorType)
 
 	case TOKEN_KEYWORD:
-		fmt.Printf("KEYWORD     %v:%v - %s\n", token.line.number, token.line.offset, token.tokenData.keywordType)
+		name = "KEYWORD"
+		data = fmt.Sprintf("%v", token.tokenData.keywordType)
 
 	case TOKEN_IDENTIFIER:
-		fmt.Printf("IDENTIFIER  %v:%v - '%s'\n", token.line.number, token.line.offset, token.tokenData.indentifierData)
+		name = "IDENTIFIER"
+		data = fmt.Sprintf("'%v'", token.tokenData.indentifierData)
 
 	case TOKEN_COMMA:
-		fmt.Printf("COMMA       %v:%v - ,\n", token.line.number, token.line.offset)
+		name = "COMMA"
+		data = ","
 
 	case TOKEN_CURLY_OPEN:
-		fmt.Printf("CURLY OPEN  %v:%v - {\n", token.line.number, token.line.offset)
+		name = "CURLY OPEN"
+		data = "{"
 
 	case TOKEN_CURLY_CLOSE:
-		fmt.Printf("CURLY CLOSE %v:%v - }\n", token.line.number, token.line.offset)
+		name = "CURLY CLOSE"
+		data = "}"
 
 	default:
-		fmt.Printf("<UNKNOWN TOKEN>\n")
+		name = "<UNKNOWN TOKEN>"
+		data = "???"
 	}
+
+	line := fmt.Sprintf("%v:%v ", token.line.number, token.line.offset)
+	fmt.Printf("%-14s %-6s - %s\n", name, line, data)
 }
