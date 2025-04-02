@@ -44,12 +44,10 @@ const (
 	PRIMITIVE_CHAR
 )
 
-// NOTE(kihau): Sub-optimal fat union, normally, would only be one of a kind.
+// TODO(kihau): Document this @frisk.
 type TokenData struct {
-	keywordType     KeywordType
-	stringData      string
-	indentifierData string
-	errorType       TokenErrorType
+	string string
+	int    int
 }
 
 type Token struct {
@@ -75,12 +73,19 @@ type Lexer struct {
 	// currToken Token
 }
 
-func advanceByte(lexer *Lexer) {
-	if len(lexer.data) == lexer.pos {
-		return
+func CreateLexer(data []byte) Lexer {
+	line := LinePos{
+		number: 1,
+		offset: 1,
 	}
 
-	lexer.pos += 1
+	lexer := Lexer{
+		data: data,
+		line: line,
+		pos:  0,
+	}
+
+	return lexer
 }
 
 func nextRune(lexer *Lexer) rune {
@@ -89,6 +94,10 @@ func nextRune(lexer *Lexer) rune {
 	}
 
 	rune, runeSize := utf8.DecodeRune(lexer.data[lexer.pos:])
+	if rune == utf8.RuneError {
+		return rune
+	}
+
 	lexer.pos += runeSize
 
 	if rune == '\n' {
@@ -120,7 +129,7 @@ func makeToken(tokenType TokenType, line LinePos) Token {
 }
 
 func makeError(errorType TokenErrorType, line LinePos) Token {
-	data := TokenData{errorType: errorType}
+	data := TokenData{int: errorType}
 	token := Token{
 		line:      line,
 		tokenType: TOKEN_ERROR,
@@ -131,7 +140,7 @@ func makeError(errorType TokenErrorType, line LinePos) Token {
 }
 
 func makeKeyword(keyword KeywordType, line LinePos) Token {
-	data := TokenData{keywordType: keyword}
+	data := TokenData{string: keyword}
 	token := Token{
 		line:      line,
 		tokenType: TOKEN_KEYWORD,
@@ -142,7 +151,7 @@ func makeKeyword(keyword KeywordType, line LinePos) Token {
 }
 
 func makeIdentifier(identifier string, line LinePos) Token {
-	data := TokenData{indentifierData: identifier}
+	data := TokenData{string: identifier}
 	token := Token{
 		line:      line,
 		tokenType: TOKEN_IDENTIFIER,
@@ -231,8 +240,6 @@ func NextToken(lexer *Lexer) Token {
 			skipComment(lexer)
 
 		default:
-			line := lexer.line
-
 			word, ok := parseWord(lexer)
 			if !ok {
 				return makeError(ERROR_UNKNOWN_RUNE_SYMBOL, line)
@@ -258,15 +265,15 @@ func PrintToken(token Token) {
 
 	case TOKEN_ERROR:
 		name = "ERROR"
-		data = fmt.Sprintf("%v", token.tokenData.errorType)
+		data = fmt.Sprintf("%v", token.tokenData.int)
 
 	case TOKEN_KEYWORD:
 		name = "KEYWORD"
-		data = fmt.Sprintf("%v", token.tokenData.keywordType)
+		data = fmt.Sprintf("%v", token.tokenData.string)
 
 	case TOKEN_IDENTIFIER:
 		name = "IDENTIFIER"
-		data = fmt.Sprintf("'%v'", token.tokenData.indentifierData)
+		data = fmt.Sprintf("'%v'", token.tokenData.string)
 
 	case TOKEN_COMMA:
 		name = "COMMA"

@@ -32,13 +32,7 @@ func main() {
 		return
 	}
 
-	lexer := Lexer{
-		data: data,
-		line: LinePos{
-			number: 1,
-			offset: 1,
-		},
-	}
+	lexer := CreateLexer(data)
 
 	// This will probably be a parser function.
 	token := NextToken(&lexer)
