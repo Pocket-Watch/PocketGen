@@ -207,7 +207,7 @@ func NextToken(lexer *Lexer) Token {
 		case 0:
 			return makeToken(TOKEN_EOF, line)
 
-		case 1:
+		case utf8.RuneError:
 			return makeError(ERROR_INVALID_RUNE_ENCODING, line)
 
 		// TODO(kihau): Maybe add other white-space characters?
@@ -282,7 +282,7 @@ func PrintToken(token Token) {
 
 	default:
 		name = "<UNKNOWN TOKEN>"
-		data = "???"
+		data = fmt.Sprintf("%v", token.tokenType)
 	}
 
 	line := fmt.Sprintf("%v:%v ", token.line.number, token.line.offset)
