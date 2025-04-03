@@ -44,16 +44,16 @@ const (
 	PRIMITIVE_CHAR
 )
 
-// TODO(kihau): Document this @frisk.
-type TokenData struct {
+// TokenValue union, matched with TokenType. Go has no unions so this one is fat.
+type TokenValue struct {
 	string string
 	int    int
 }
 
 type Token struct {
-	line      LinePos
-	tokenType TokenType
-	tokenData TokenData
+	line       LinePos
+	tokenType  TokenType
+	tokenValue TokenValue
 }
 
 type LinePos struct {
@@ -129,33 +129,33 @@ func makeToken(tokenType TokenType, line LinePos) Token {
 }
 
 func makeError(errorType TokenErrorType, line LinePos) Token {
-	data := TokenData{int: errorType}
+	value := TokenValue{int: errorType}
 	token := Token{
-		line:      line,
-		tokenType: TOKEN_ERROR,
-		tokenData: data,
+		line:       line,
+		tokenType:  TOKEN_ERROR,
+		tokenValue: value,
 	}
 
 	return token
 }
 
 func makeKeyword(keyword KeywordType, line LinePos) Token {
-	data := TokenData{string: keyword}
+	value := TokenValue{string: keyword}
 	token := Token{
-		line:      line,
-		tokenType: TOKEN_KEYWORD,
-		tokenData: data,
+		line:       line,
+		tokenType:  TOKEN_KEYWORD,
+		tokenValue: value,
 	}
 
 	return token
 }
 
 func makeIdentifier(identifier string, line LinePos) Token {
-	data := TokenData{string: identifier}
+	value := TokenValue{string: identifier}
 	token := Token{
-		line:      line,
-		tokenType: TOKEN_IDENTIFIER,
-		tokenData: data,
+		line:       line,
+		tokenType:  TOKEN_IDENTIFIER,
+		tokenValue: value,
 	}
 
 	return token
@@ -256,42 +256,42 @@ func NextToken(lexer *Lexer) Token {
 
 func PrintToken(token Token) {
 	var name string
-	var data string
+	var value string
 
 	switch token.tokenType {
 	case TOKEN_EOF:
 		name = "EOF"
-		data = "end of file"
+		value = "end of file"
 
 	case TOKEN_ERROR:
 		name = "ERROR"
-		data = fmt.Sprintf("%v", token.tokenData.int)
+		value = fmt.Sprintf("%v", token.tokenValue.int)
 
 	case TOKEN_KEYWORD:
 		name = "KEYWORD"
-		data = fmt.Sprintf("%v", token.tokenData.string)
+		value = fmt.Sprintf("%v", token.tokenValue.string)
 
 	case TOKEN_IDENTIFIER:
 		name = "IDENTIFIER"
-		data = fmt.Sprintf("'%v'", token.tokenData.string)
+		value = fmt.Sprintf("'%v'", token.tokenValue.string)
 
 	case TOKEN_COMMA:
 		name = "COMMA"
-		data = ","
+		value = ","
 
 	case TOKEN_CURLY_OPEN:
 		name = "CURLY OPEN"
-		data = "{"
+		value = "{"
 
 	case TOKEN_CURLY_CLOSE:
 		name = "CURLY CLOSE"
-		data = "}"
+		value = "}"
 
 	default:
 		name = "<UNKNOWN TOKEN>"
-		data = fmt.Sprintf("%v", token.tokenType)
+		value = fmt.Sprintf("%v", token.tokenType)
 	}
 
 	line := fmt.Sprintf("%v:%v ", token.line.number, token.line.offset)
-	fmt.Printf("%-14s %-6s - %s\n", name, line, data)
+	fmt.Printf("%-14s %-6s - %s\n", name, line, value)
 }
