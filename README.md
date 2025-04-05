@@ -40,4 +40,8 @@ char
  - at number 4 copy-paste primitive types
 6. In **File name patterns** associate it with `*.tg`
 
+### Neovim / Vim
+Source the syntax file editor command: 
+`:so res/pocketgen.vim`
 
+You cant also add it to your `vim.rc`/`init.lua` to source it automatically.

@@ -21,10 +21,10 @@ type Parser struct {
 	lexer     Lexer
 	tokenNow  Token
 	tokenNext Token
-	structs   []StructDecl
+	structs   []TypeDecl
 }
 
-type StructDecl struct {
+type TypeDecl struct {
 	name    string
 	fields  []Field
 	methods []FuncDecl

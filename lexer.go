@@ -33,11 +33,12 @@ const (
 type KeywordType = string
 
 const (
+	KEYWORD_TYPE  KeywordType = "type"
 	KEYWORD_CONST KeywordType = "const"
 	KEYWORD_FUNC  KeywordType = "func"
 )
 
-var KEYWORDS = []KeywordType{KEYWORD_CONST, KEYWORD_FUNC}
+var KEYWORDS = []KeywordType{KEYWORD_TYPE, KEYWORD_CONST, KEYWORD_FUNC}
 
 const (
 	PRIMITIVE_INT = iota
