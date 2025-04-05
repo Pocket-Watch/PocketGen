@@ -72,9 +72,29 @@ type Lexer struct {
 	// TODO(kihau):
 	//     Store previous and current token to allow implementation of Peek() and PeekNext() functions.
 	//     This could also be a token ring buffer when larger token sequence is needed for parsing.
-	// prevToken Token
-	// currToken Token
+	// tokenNow  Token
+	// tokenNext Token
 }
+
+/*
+func startToken(lexer *Lexer) {
+	lexer.tokenNow  = NextToken(lexer)
+	lexer.tokenNext = NextToken(lexer)
+}
+
+func PeekToken(lexer *Lexer) Token {
+	return lexer.tokenNow
+}
+
+func PeekNextToken(lexer *Lexer) Token {
+	return lexer.tokenNext
+}
+
+func AdvanceToken(lexer *Lexer) {
+	lexer.tokenNow = lexer.tokenNext
+	lexer.tokenNext = NextToken(lexer)
+}
+*/
 
 func CreateLexer(data []byte) Lexer {
 	line := LinePos{
@@ -262,7 +282,7 @@ func NextToken(lexer *Lexer) Token {
 	}
 }
 
-func PrintToken(token Token) {
+func TokenToString(token Token) string {
 	var name string
 	var value string
 
@@ -305,5 +325,59 @@ func PrintToken(token Token) {
 	}
 
 	line := fmt.Sprintf("%v:%v ", token.line.number, token.line.offset)
-	fmt.Printf("%-14s %-6s - %s\n", name, line, value)
+	string := fmt.Sprintf("%-14s %-6s - %s", name, line, value)
+	return string
+}
+
+func PrintToken(token Token) {
+	tokenString := TokenToString(token)
+	fmt.Printf("%v\n", tokenString)
+}
+
+func TokenTypeToString(tokenType TokenType) string {
+	switch tokenType {
+	case TOKEN_EOF:
+		return "TOKEN_EOF"
+
+	case TOKEN_ERROR:
+		return "TOKEN_ERROR"
+
+	case TOKEN_KEYWORD:
+		return "TOKEN_KEYWORD"
+
+	case TOKEN_IDENTIFIER:
+		return "TOKEN_IDENTIFIER"
+
+	case TOKEN_COMMA:
+		return "TOKEN_COMMA"
+
+	case TOKEN_SEMICOLON:
+		return "TOKEN_SEMICOLON"
+
+	case TOKEN_CURLY_OPEN:
+		return "TOKEN_CURLY_OPEN"
+
+	case TOKEN_CURLY_CLOSE:
+		return "TOKEN_CURLY_CLOSE"
+
+	default:
+		return "TOKEN_UNKNOWN"
+	}
+}
+
+func GenerateTestTokens(data []byte) {
+	lexer := CreateLexer(data)
+
+	fmt.Println("expectedTokens := makeTestTokens(")
+	for {
+		token := NextToken(&lexer)
+
+		typeString := TokenTypeToString(token.tokenType)
+		fmt.Printf("\ttestToken(%v, \"%v\", %v, %v, %v),\n", typeString, token.tokenValue.string, token.tokenValue.int, token.line.number, token.line.offset)
+
+		if IsType(token, TOKEN_EOF) || IsType(token, TOKEN_ERROR) {
+			break
+		}
+	}
+	fmt.Println(")")
 }

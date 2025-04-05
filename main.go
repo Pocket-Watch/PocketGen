@@ -25,7 +25,7 @@ import (
 //   varDecl := identifier ( "[" "]" ) identifier
 
 func main() {
-	data, err := os.ReadFile("testing.tg")
+	data, err := os.ReadFile("test/lexer1.tg")
 
 	if err != nil {
 		fmt.Printf("ERROR: Failed to open sample tg file: %v\n", err)

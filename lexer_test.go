@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"testing"
 )
 
@@ -33,71 +34,86 @@ func makeTestTokens(tokens ...Token) []Token {
 	return expected
 }
 
-func TestValidTokens(t *testing.T) {
-	input := `# This is a sample .tg file for lexer testing.
+func validateLexerTokens(t *testing.T, testPath string, expectedTokens []Token) {
+	data, err := os.ReadFile(testPath)
+	if err != nil {
+		t.Errorf("Failed to open lexer1 test file: %v.", err)
+		return
+	}
 
-const{ }
+	lexer := CreateLexer(data)
+	counter := 0
 
-# This is a comment
-, ###
-ranoasdconst  	func
-func123ł}ł ą2 # const
-
-a#a
-`
-
-	lexer := CreateLexer([]byte(input))
-
-	// TODO(kihau): Lexer should have a function to generate those automatically.
-	expectedTokens := makeTestTokens(
-		testToken(TOKEN_KEYWORD,     "const",        0, 3, 1),
-		testToken(TOKEN_CURLY_OPEN,  "",             0, 3, 6),
-		testToken(TOKEN_CURLY_CLOSE, "",             0, 3, 8),
-		testToken(TOKEN_COMMA,       "",             0, 6, 1),
-		testToken(TOKEN_IDENTIFIER,  "ranoasdconst", 0, 7, 3),
-		testToken(TOKEN_KEYWORD,     "func",         0, 7, 18),
-		testToken(TOKEN_IDENTIFIER,  "func123ł",     0, 8, 1),
-		testToken(TOKEN_CURLY_CLOSE, "",             0, 8, 9),
-		testToken(TOKEN_IDENTIFIER,  "ł",            0, 8, 10),
-		testToken(TOKEN_IDENTIFIER,  "ą2",           0, 8, 12),
-		testToken(TOKEN_IDENTIFIER,  "a",            0, 10, 1),
-	)
-
-	actualTokens := make([]Token, 0)
-	// This will probably be a parser function.
 	token := NextToken(&lexer)
 	for {
-		PrintToken(token)
+		// NOTE(kihau):
+		//    This is a sanity check. Because all token streams end with EOF, the loop should always
+		//    exit before expectedTokens run out and because of that branch is expected to always be 'false'.
+		if counter >= len(expectedTokens) {
+			t.Errorf("Number of actual tokens is greater than those expected in the test.\n")
+			t.Errorf("Expected: End of file.\n")
+			t.Errorf("Found:    %v.\n", TokenToString(token))
+			break
+		}
 
-		// Without this, it turns into an infinite loop
+		expected := expectedTokens[counter]
+		if !compareTokens(t, expected, token, counter) {
+			break
+		}
+
 		if IsType(token, TOKEN_EOF) {
 			break
 		}
 
-		if IsType(token, TOKEN_ERROR) {
-			t.Error("Token bad, also the parser will handle this.")
-			break
-		}
-
-		actualTokens = append(actualTokens, token)
+		counter += 1
 		token = NextToken(&lexer)
 	}
-	compareTokens(expectedTokens, actualTokens, t)
 }
 
-func compareTokens(expected []Token, actual []Token, t *testing.T) {
-	if len(expected) != len(actual) {
-		t.Errorf("Different number of tokens, expected %v, actual %v", len(expected), len(actual))
-		return
+func TestLexer1(t *testing.T) {
+	// NOTE(kihau): Generated using the GenerateTestTokens() function.
+	expectedTokens := makeTestTokens(
+		testToken(TOKEN_KEYWORD, "const", 0, 3, 1),
+		testToken(TOKEN_CURLY_OPEN, "", 0, 3, 6),
+		testToken(TOKEN_CURLY_CLOSE, "", 0, 3, 8),
+		testToken(TOKEN_COMMA, "", 0, 6, 1),
+		testToken(TOKEN_IDENTIFIER, "ranoasdconst", 0, 7, 3),
+		testToken(TOKEN_KEYWORD, "func", 0, 7, 18),
+		testToken(TOKEN_IDENTIFIER, "func123ł", 0, 8, 1),
+		testToken(TOKEN_CURLY_CLOSE, "", 0, 8, 9),
+		testToken(TOKEN_IDENTIFIER, "ł", 0, 8, 10),
+		testToken(TOKEN_IDENTIFIER, "ą2", 0, 8, 12),
+		testToken(TOKEN_IDENTIFIER, "a", 0, 10, 1),
+		testToken(TOKEN_EOF, "", 0, 11, 1),
+	)
+
+	validateLexerTokens(t, "test/lexer1.tg", expectedTokens)
+}
+
+func compareTokens(t *testing.T, expected Token, actual Token, number int) bool {
+	if expected.tokenType != actual.tokenType {
+		t.Errorf("Expected token at index %v has different token type than the actual token.", number)
+		t.Errorf("Expected: %v", TokenToString(expected))
+		t.Errorf("Actual:   %v", TokenToString(actual))
+
+		return false
 	}
 
-	for i := 0; i < len(expected); i++ {
-		if expected[i].tokenType != actual[i].tokenType {
-			t.Errorf("Different tokens at index %v, expected %v, actual %v", i, expected[i].tokenType, actual[i].tokenType)
-			PrintToken(expected[i])
-			PrintToken(actual[i])
-			return
-		}
+	if expected.tokenValue.int != actual.tokenValue.int || expected.tokenValue.string != actual.tokenValue.string {
+		t.Errorf("Expected token at index %v has different value content than the actual token.", number)
+		t.Errorf("Expected: %v", TokenToString(expected))
+		t.Errorf("Actual:   %v", TokenToString(actual))
+
+		return false
 	}
-	return
+
+	if expected.line.number != actual.line.number || expected.line.offset != actual.line.offset {
+		t.Errorf("Expected token at index %v is at line different position than the actual token.", number)
+		t.Errorf("Expected: %v", TokenToString(expected))
+		t.Errorf("Actual:   %v", TokenToString(actual))
+
+		return false
+	}
+
+	return true
 }
