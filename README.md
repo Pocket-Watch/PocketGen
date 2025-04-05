@@ -41,7 +41,7 @@ char
 6. In **File name patterns** associate it with `*.tg`
 
 ### Neovim / Vim
-Source the syntax file editor command: 
+Source the syntax file with the editor command: 
 `:so res/pocketgen.vim`
 
-You cant also add it to your `vim.rc`/`init.lua` to source it automatically.
+You can also source it automatically by add it to your `vim.rc`/`init.lua`.
