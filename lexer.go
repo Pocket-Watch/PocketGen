@@ -16,6 +16,7 @@ const (
 	TOKEN_IDENTIFIER
 	TOKEN_COMMA
 	TOKEN_SEMICOLON
+	TOKEN_NULLABLE
 	TOKEN_CURLY_OPEN
 	TOKEN_CURLY_CLOSE
 )
@@ -264,6 +265,10 @@ func NextToken(lexer *Lexer) Token {
 			nextRune(lexer)
 			return makeToken(TOKEN_SEMICOLON, line)
 
+		case '?':
+			nextRune(lexer)
+			return makeToken(TOKEN_NULLABLE, line)
+
 		case '#':
 			skipComment(lexer)
 
@@ -311,6 +316,10 @@ func TokenToString(token Token) string {
 		name = "SEMICOLON"
 		value = ";"
 
+	case TOKEN_NULLABLE:
+		name = "NULLABLE"
+		value = "?"
+
 	case TOKEN_CURLY_OPEN:
 		name = "CURLY OPEN"
 		value = "{"
@@ -353,6 +362,9 @@ func TokenTypeToString(tokenType TokenType) string {
 
 	case TOKEN_SEMICOLON:
 		return "TOKEN_SEMICOLON"
+
+	case TOKEN_NULLABLE:
+		return "TOKEN_NULLABLE"
 
 	case TOKEN_CURLY_OPEN:
 		return "TOKEN_CURLY_OPEN"

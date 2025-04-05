@@ -56,12 +56,12 @@ func validateLexerTokens(t *testing.T, testPath string, expectedTokens []Token) 
 			break
 		}
 
-		expected := expectedTokens[counter]
-		if !compareTokens(t, expected, token, counter) {
+		if IsType(token, TOKEN_EOF) {
 			break
 		}
 
-		if IsType(token, TOKEN_EOF) {
+		expected := expectedTokens[counter]
+		if !compareTokens(t, expected, token, counter) {
 			break
 		}
 
