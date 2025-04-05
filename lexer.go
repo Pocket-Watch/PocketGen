@@ -19,6 +19,8 @@ const (
 	TOKEN_NULLABLE
 	TOKEN_CURLY_OPEN
 	TOKEN_CURLY_CLOSE
+	TOKEN_ROUND_OPEN
+	TOKEN_ROUND_CLOSE
 )
 
 type TokenErrorType = int
@@ -258,6 +260,14 @@ func NextToken(lexer *Lexer) Token {
 			nextRune(lexer)
 			return makeToken(TOKEN_CURLY_CLOSE, line)
 
+		case '(':
+			nextRune(lexer)
+			return makeToken(TOKEN_ROUND_OPEN, line)
+
+		case ')':
+			nextRune(lexer)
+			return makeToken(TOKEN_ROUND_CLOSE, line)
+
 		case ',':
 			nextRune(lexer)
 			return makeToken(TOKEN_COMMA, line)
@@ -329,6 +339,14 @@ func TokenToString(token Token) string {
 		name = "CURLY CLOSE"
 		value = "}"
 
+	case TOKEN_ROUND_OPEN:
+		name = "ROUND OPEN"
+		value = "("
+
+	case TOKEN_ROUND_CLOSE:
+		name = "ROUND CLOSE"
+		value = ")"
+
 	default:
 		name = "<UNKNOWN TOKEN>"
 		value = fmt.Sprintf("%v", token.tokenType)
@@ -372,6 +390,12 @@ func TokenTypeToString(tokenType TokenType) string {
 
 	case TOKEN_CURLY_CLOSE:
 		return "TOKEN_CURLY_CLOSE"
+
+	case TOKEN_ROUND_OPEN:
+		return "TOKEN_ROUND_OPEN"
+
+	case TOKEN_ROUND_CLOSE:
+		return "TOKEN_ROUND_CLOSE"
 
 	default:
 		return "TOKEN_UNKNOWN"

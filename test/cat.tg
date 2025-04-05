@@ -1,0 +1,6 @@
+type Cat {
+	const string name;
+	u32 age;
+	func meow(string sound, u32 volume) string { }
+}
+# This a comment
