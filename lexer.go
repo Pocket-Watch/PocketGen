@@ -61,6 +61,7 @@ type Token struct {
 	tokenValue TokenValue
 }
 
+// LinePos (debug struct) - number and offset are 1-indexed
 type LinePos struct {
 	number int
 	offset int

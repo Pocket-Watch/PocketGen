@@ -1,6 +1,6 @@
 type Cat {
-	const string name;
-	u32 age;
-	func meow(string sound, u32 volume) string { }
+    const string name;
+    u32 age;
+    # This a comment
+    func meow(string sound, u32 volume) string;
 }
-# This a comment
