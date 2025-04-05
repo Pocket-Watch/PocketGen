@@ -15,6 +15,7 @@ const (
 	TOKEN_KEYWORD
 	TOKEN_IDENTIFIER
 	TOKEN_COMMA
+	TOKEN_SEMICOLON
 	TOKEN_CURLY_OPEN
 	TOKEN_CURLY_CLOSE
 )
@@ -62,9 +63,11 @@ type LinePos struct {
 }
 
 type Lexer struct {
-	data []byte
-	line LinePos
-	pos  int
+	data     []byte
+	line     LinePos
+	pos      int
+	runeNow  rune
+	runeSize int
 
 	// TODO(kihau):
 	//     Store previous and current token to allow implementation of Peek() and PeekNext() functions.
@@ -85,38 +88,40 @@ func CreateLexer(data []byte) Lexer {
 		pos:  0,
 	}
 
+	startRune(&lexer)
 	return lexer
 }
 
+func startRune(lexer *Lexer) {
+	rune, runeSize := utf8.DecodeRune(lexer.data)
+	lexer.runeNow = rune
+	lexer.runeSize = runeSize
+}
+
 func nextRune(lexer *Lexer) rune {
-	if lexer.pos >= len(lexer.data) {
-		return 0
-	}
-
-	rune, runeSize := utf8.DecodeRune(lexer.data[lexer.pos:])
-	if rune == utf8.RuneError {
-		return rune
-	}
-
-	lexer.pos += runeSize
-
-	if rune == '\n' {
+	if lexer.runeNow == '\n' {
 		lexer.line.number += 1
 		lexer.line.offset = 1
 	} else {
 		lexer.line.offset += 1
 	}
 
-	return rune
-}
+	lexer.pos += lexer.runeSize
+	lexer.runeNow = 0
+	lexer.runeSize = 0
 
-func peekRune(lexer *Lexer) rune {
 	if lexer.pos >= len(lexer.data) {
 		return 0
 	}
 
-	rune, _ := utf8.DecodeRune(lexer.data[lexer.pos:])
+	rune, runeSize := utf8.DecodeRune(lexer.data[lexer.pos:])
+	lexer.runeNow = rune
+	lexer.runeSize = runeSize
 	return rune
+}
+
+func peekRune(lexer *Lexer) rune {
+	return lexer.runeNow
 }
 
 func makeToken(tokenType TokenType, line LinePos) Token {
@@ -196,9 +201,8 @@ func parseWord(lexer *Lexer) (string, bool) {
 
 func skipComment(lexer *Lexer) {
 	rune := peekRune(lexer)
-	for rune != '\n' {
-		nextRune(lexer)
-		rune = peekRune(lexer)
+	for rune != '\n' && rune != 0 {
+		rune = nextRune(lexer)
 	}
 }
 
@@ -235,6 +239,10 @@ func NextToken(lexer *Lexer) Token {
 		case ',':
 			nextRune(lexer)
 			return makeToken(TOKEN_COMMA, line)
+
+		case ';':
+			nextRune(lexer)
+			return makeToken(TOKEN_SEMICOLON, line)
 
 		case '#':
 			skipComment(lexer)
@@ -278,6 +286,10 @@ func PrintToken(token Token) {
 	case TOKEN_COMMA:
 		name = "COMMA"
 		value = ","
+
+	case TOKEN_SEMICOLON:
+		name = "SEMICOLON"
+		value = ";"
 
 	case TOKEN_CURLY_OPEN:
 		name = "CURLY OPEN"

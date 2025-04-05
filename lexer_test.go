@@ -4,26 +4,64 @@ import (
 	"testing"
 )
 
+func testToken(tokenType TokenType, tokenString string, tokenInt int, tokenLine int, tokenOffset int) Token {
+	line := LinePos{
+		number: tokenLine,
+		offset: tokenOffset,
+	}
+
+	value := TokenValue{
+		string: tokenString,
+		int:    tokenInt,
+	}
+
+	token := Token{
+		tokenType:  tokenType,
+		tokenValue: value,
+		line:       line,
+	}
+
+	return token
+}
+
+func makeTestTokens(tokens ...Token) []Token {
+	expected := make([]Token, 0)
+	for _, token := range tokens {
+		expected = append(expected, token)
+	}
+
+	return expected
+}
+
 func TestValidTokens(t *testing.T) {
-	input := `
-        # This is a sample .tg file for lexer testing.
+	input := `# This is a sample .tg file for lexer testing.
 
-        const{ }
+const{ }
 
-        # This is a comment
-        , ###
-        ranoasdconst  	func
-        func123ł}ł ą2 # const
+# This is a comment
+, ###
+ranoasdconst  	func
+func123ł}ł ą2 # const
 
-        a#a
-        `
+a#a
+`
 
 	lexer := CreateLexer([]byte(input))
 
-	expectedTokens := asTokens(TOKEN_KEYWORD, TOKEN_CURLY_OPEN, TOKEN_CURLY_CLOSE,
-		TOKEN_COMMA, TOKEN_IDENTIFIER, TOKEN_KEYWORD,
-		TOKEN_IDENTIFIER, TOKEN_CURLY_CLOSE, TOKEN_IDENTIFIER,
-		TOKEN_IDENTIFIER, TOKEN_IDENTIFIER)
+	// TODO(kihau): Lexer should have a function to generate those automatically.
+	expectedTokens := makeTestTokens(
+		testToken(TOKEN_KEYWORD,     "const",        0, 3, 1),
+		testToken(TOKEN_CURLY_OPEN,  "",             0, 3, 6),
+		testToken(TOKEN_CURLY_CLOSE, "",             0, 3, 8),
+		testToken(TOKEN_COMMA,       "",             0, 6, 1),
+		testToken(TOKEN_IDENTIFIER,  "ranoasdconst", 0, 7, 3),
+		testToken(TOKEN_KEYWORD,     "func",         0, 7, 18),
+		testToken(TOKEN_IDENTIFIER,  "func123ł",     0, 8, 1),
+		testToken(TOKEN_CURLY_CLOSE, "",             0, 8, 9),
+		testToken(TOKEN_IDENTIFIER,  "ł",            0, 8, 10),
+		testToken(TOKEN_IDENTIFIER,  "ą2",           0, 8, 12),
+		testToken(TOKEN_IDENTIFIER,  "a",            0, 10, 1),
+	)
 
 	actualTokens := make([]Token, 0)
 	// This will probably be a parser function.
@@ -45,16 +83,6 @@ func TestValidTokens(t *testing.T) {
 		token = NextToken(&lexer)
 	}
 	compareTokens(expectedTokens, actualTokens, t)
-}
-
-func asTokens(types ...TokenType) []Token {
-	tokens := make([]Token, 0, len(types))
-	for i := 0; i < len(types); i++ {
-		pos := LinePos{0, 0}
-		token := makeToken(types[i], pos)
-		tokens = append(tokens, token)
-	}
-	return tokens
 }
 
 func compareTokens(expected []Token, actual []Token, t *testing.T) {
