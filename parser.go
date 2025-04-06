@@ -31,8 +31,9 @@ type TypeDecl struct {
 }
 
 type FuncDecl struct {
-	name   string
-	fields []Field
+	name       string
+	fields     []Field
+	returnType string
 }
 
 type FieldModifier = uint32
@@ -47,7 +48,7 @@ const (
 type Field struct {
 	varName   string
 	typeName  string
-	modifiers FieldModifier
+	modifiers []FieldModifier
 }
 
 func PlaceholderParse(parser *Parser) {
