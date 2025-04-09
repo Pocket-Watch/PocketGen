@@ -19,12 +19,11 @@ func generateJS(types []TypeDecl, writer *bufio.Writer) {
 
 		for _, field := range t.fields {
 			writeIndent(INDENT, writer)
-			for _, modifier := range field.modifiers {
-				// What if FieldConst is repeated in the list of modifiers?
-				if modifier == FIELD_CONST {
-					writer.WriteString("const ")
-				}
+
+			if hasModifier(field, FIELD_CONST) {
+				writer.WriteString("const ")
 			}
+
 			writer.WriteString(field.varName)
 			writer.WriteString(";\n")
 		}
@@ -42,11 +41,11 @@ func generateJS(types []TypeDecl, writer *bufio.Writer) {
 				} else {
 					writer.WriteString(", ")
 				}
-				for _, modifier := range field.modifiers {
-					if modifier == FIELD_CONST {
-						writer.WriteString("const ")
-					}
+
+				if hasModifier(field, FIELD_CONST) {
+					writer.WriteString("const ")
 				}
+
 				writer.WriteString(field.varName)
 			}
 			writer.WriteByte(')')

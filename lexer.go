@@ -235,6 +235,10 @@ func IsType(token Token, tokenType TokenType) bool {
 	return token.tokenType == tokenType
 }
 
+func IsKeyword(token Token, keywordType KeywordType) bool {
+	return token.tokenType == TOKEN_KEYWORD && token.tokenValue.string == keywordType
+}
+
 func NextToken(lexer *Lexer) Token {
 	for {
 		rune := peekRune(lexer)
