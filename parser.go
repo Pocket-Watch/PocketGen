@@ -9,6 +9,7 @@ type Parser struct {
 	filepath string
 	lexer    Lexer
 	structs  []TypeDecl
+	tokenNow Token
 }
 
 type TypeDecl struct {
@@ -48,14 +49,26 @@ func CreateParser(path string) (Parser, bool) {
 	}
 
 	lexer := CreateLexer(data)
+	token := NextToken(&lexer)
 
 	parser := Parser{
 		filepath: path,
 		lexer:    lexer,
 		structs:  make([]TypeDecl, 0),
+		tokenNow: token,
 	}
 
 	return parser, true
+}
+
+func AdvanceToken(parser *Parser) Token {
+	previous := parser.tokenNow
+	parser.tokenNow = NextToken(&parser.lexer)
+	return previous
+}
+
+func PeekToken(parser *Parser) Token {
+	return parser.tokenNow
 }
 
 // Returns true if modifier was already applied. This check might be useful when more modifier keywords are added
@@ -74,91 +87,193 @@ func hasModifier(field Field, modifier FieldModifier) bool {
 	return field.modifiers&modifier != 0
 }
 
-type ParsingError struct {
-	expected      Token
-	found         Token
-	customMessage string
+type ParsingResult struct {
+	success bool
+	message string
 }
 
-func parserOk() (bool, ParsingError) {
-	return true, ParsingError{}
+func parserOk() ParsingResult {
+	result := ParsingResult{
+		success: true,
+		message: "",
+	}
+
+	return result
 }
 
-func expectedToken(expectedType TokenType, found Token) (bool, ParsingError) {
-	expected := Token{
-		tokenType: expectedType,
+func (parser *Parser) formatExpectedToken(found Token, format string, args ...any) string {
+	var foundString string
+
+	switch found.tokenType {
+	case TOKEN_KEYWORD:
+		foundString = fmt.Sprintf("keyword '%s'", found.tokenValue.string)
+	case TOKEN_IDENTIFIER:
+		foundString = fmt.Sprintf("identifier '%s'", found.tokenValue.string)
+	default:
+		foundString = fmt.Sprintf("token '%s'", TokenTypeToString(found.tokenType))
 	}
 
-	error := ParsingError{
-		expected:      expected,
-		found:         found,
-		customMessage: "",
-	}
+	expectedString := fmt.Sprintf(format, args...)
 
-	return false, error
+	line := found.line
+
+	message := fmt.Sprintf("%s:%v:%v Expected %s, but instead %s was found.", parser.filepath, line.number, line.offset, expectedString, foundString)
+	return message
 }
 
-func expectedKeyword(keywordType KeywordType, found Token) (bool, ParsingError) {
-	expected := Token{
-		tokenType:  TOKEN_KEYWORD,
-		tokenValue: TokenValue{string: keywordType},
+func (parser *Parser) expectedToken(expectedType TokenType, found Token) ParsingResult {
+	expectedString := TokenTypeToString(expectedType)
+	message := parser.formatExpectedToken(found, "token %s", expectedString)
+
+	result := ParsingResult{
+		success: false,
+		message: message,
 	}
 
-	error := ParsingError{
-		expected:      expected,
-		found:         found,
-		customMessage: "",
-	}
-
-	return false, error
+	return result
 }
 
-func parserErrorMessage(found Token, message string) (bool, ParsingError) {
-	error := ParsingError{
-		expected:      Token{},
-		found:         found,
-		customMessage: message,
+func (parser *Parser) expectedKeyword(keywordType KeywordType, found Token) ParsingResult {
+	message := parser.formatExpectedToken(found, "keyword '%s'", keywordType)
+
+	result := ParsingResult{
+		success: false,
+		message: message,
 	}
 
-	return false, error
-
+	return result
 }
 
-func parseTypeDeclaration(parser *Parser) (bool, ParsingError) {
-	typeDecl := TypeDecl{}
+func (parser *Parser) parserErrorMessage(found Token, message string) ParsingResult {
+	line := found.line
+	message = fmt.Sprintf("%v:%v %s", line.number, line.offset, message)
 
-	token := NextToken(&parser.lexer)
-	if IsKeyword(token, KEYWORD_TYPE) {
-		return expectedKeyword(KEYWORD_TYPE, token)
+	result := ParsingResult{
+		success: false,
+		message: message,
 	}
 
-	token = NextToken(&parser.lexer)
-	if IsType(token, TOKEN_IDENTIFIER) {
-		return expectedToken(TOKEN_IDENTIFIER, token)
+	return result
+}
+
+func parseTypeField(parser *Parser, field *Field) ParsingResult {
+	token := PeekToken(parser)
+	if IsKeyword(token, KEYWORD_CONST) {
+		addModifier(field, FIELD_CONST)
+		AdvanceToken(parser)
+	}
+
+	//
+	// Parse the field type
+	//
+
+	is_array_type := false
+	token = PeekToken(parser)
+	if IsType(token, TOKEN_SQUARE_OPEN) {
+		is_array_type = true
+		addModifier(field, FIELD_ARRAY)
+		AdvanceToken(parser)
+	}
+
+	token = AdvanceToken(parser)
+	if !IsType(token, TOKEN_IDENTIFIER) {
+		return parser.expectedToken(TOKEN_IDENTIFIER, token)
+	}
+
+	field.typeName = token.tokenValue.string
+
+	token = PeekToken(parser)
+	if IsType(token, TOKEN_NULLABLE) {
+		addModifier(field, FIELD_NULLABLE)
+		AdvanceToken(parser)
+	}
+
+	if is_array_type {
+		token = AdvanceToken(parser)
+		if !IsType(token, TOKEN_SQUARE_CLOSE) {
+			return parser.expectedToken(TOKEN_SQUARE_CLOSE, token)
+		}
+	}
+
+	//
+	// Parse the field variable name
+	//
+	token = AdvanceToken(parser)
+	if !IsType(token, TOKEN_IDENTIFIER) {
+		return parser.expectedToken(TOKEN_IDENTIFIER, token)
+	}
+
+	field.varName = token.tokenValue.string
+
+	return parserOk()
+}
+
+func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParsingResult {
+	AdvanceToken(parser)
+	// if !IsKeyword(token, KEYWORD_TYPE) {
+	// 	return expectedKeyword(KEYWORD_TYPE, token)
+	// }
+
+	token := AdvanceToken(parser)
+	if !IsType(token, TOKEN_IDENTIFIER) {
+		return parser.expectedToken(TOKEN_IDENTIFIER, token)
 	}
 
 	typeDecl.name = token.tokenValue.string
 
-	token = NextToken(&parser.lexer)
-	if IsType(token, TOKEN_CURLY_OPEN) {
-		return expectedToken(TOKEN_CURLY_OPEN, token)
+	token = AdvanceToken(parser)
+	if !IsType(token, TOKEN_CURLY_OPEN) {
+		return parser.expectedToken(TOKEN_CURLY_OPEN, token)
 	}
 
-	// Parse fields here...
-
-	token = NextToken(&parser.lexer)
+	token = PeekToken(parser)
 	if IsType(token, TOKEN_CURLY_CLOSE) {
-		return expectedToken(TOKEN_CURLY_CLOSE, token)
+		AdvanceToken(parser)
+		return parserOk()
 	}
 
-	parser.structs = append(parser.structs, typeDecl)
+	for {
+		field := Field{}
+		result := parseTypeField(parser, &field)
+		if !result.success {
+			return result
+		}
+
+		token = AdvanceToken(parser)
+		if !IsType(token, TOKEN_SEMICOLON) {
+			return parser.expectedToken(TOKEN_SEMICOLON, token)
+		}
+
+		token = PeekToken(parser)
+		if IsType(token, TOKEN_CURLY_CLOSE) {
+			AdvanceToken(parser)
+			break
+		}
+	}
+
 	return parserOk()
 }
 
-func ParseFile(parser *Parser) (bool, ParsingError) {
-	// 1. Peek token.
-	// 2. Check end of file.
-	//      yes -> parsing ended.
-	//      no -> parser type declaration.
+func ParseFile(parser *Parser) ParsingResult {
+	for {
+		token := PeekToken(parser)
+		if IsType(token, TOKEN_EOF) {
+			break
+		}
+
+		var result ParsingResult
+		if IsKeyword(token, KEYWORD_TYPE) {
+			var typeDecl TypeDecl
+			result = parseTypeDeclaration(parser, &typeDecl)
+			parser.structs = append(parser.structs, typeDecl)
+		} else {
+			return parser.expectedKeyword(KEYWORD_TYPE, token)
+		}
+
+		if !result.success {
+			return result
+		}
+	}
+
 	return parserOk()
 }

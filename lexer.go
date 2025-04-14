@@ -21,6 +21,8 @@ const (
 	TOKEN_CURLY_CLOSE
 	TOKEN_ROUND_OPEN
 	TOKEN_ROUND_CLOSE
+	TOKEN_SQUARE_OPEN
+	TOKEN_SQUARE_CLOSE
 )
 
 type TokenErrorType = int
@@ -73,33 +75,7 @@ type Lexer struct {
 	pos      int
 	runeNow  rune
 	runeSize int
-
-	// TODO(kihau):
-	//     Store previous and current token to allow implementation of Peek() and PeekNext() functions.
-	//     This could also be a token ring buffer when larger token sequence is needed for parsing.
-	// tokenNow  Token
-	// tokenNext Token
 }
-
-/*
-func startToken(lexer *Lexer) {
-	lexer.tokenNow  = NextToken(lexer)
-	lexer.tokenNext = NextToken(lexer)
-}
-
-func PeekToken(lexer *Lexer) Token {
-	return lexer.tokenNow
-}
-
-func PeekNextToken(lexer *Lexer) Token {
-	return lexer.tokenNext
-}
-
-func AdvanceToken(lexer *Lexer) {
-	lexer.tokenNow = lexer.tokenNext
-	lexer.tokenNext = NextToken(lexer)
-}
-*/
 
 func CreateLexer(data []byte) Lexer {
 	line := LinePos{
@@ -273,6 +249,14 @@ func NextToken(lexer *Lexer) Token {
 			nextRune(lexer)
 			return makeToken(TOKEN_ROUND_CLOSE, line)
 
+		case '[':
+			nextRune(lexer)
+			return makeToken(TOKEN_SQUARE_OPEN, line)
+
+		case ']':
+			nextRune(lexer)
+			return makeToken(TOKEN_SQUARE_CLOSE, line)
+
 		case ',':
 			nextRune(lexer)
 			return makeToken(TOKEN_COMMA, line)
@@ -352,6 +336,14 @@ func TokenToString(token Token) string {
 		name = "ROUND CLOSE"
 		value = ")"
 
+	case TOKEN_SQUARE_OPEN:
+		name = "SQUARE OPEN"
+		value = "["
+
+	case TOKEN_SQUARE_CLOSE:
+		name = "SQUARE CLOSE"
+		value = "]"
+
 	default:
 		name = "<UNKNOWN TOKEN>"
 		value = fmt.Sprintf("%v", token.tokenType)
@@ -401,6 +393,12 @@ func TokenTypeToString(tokenType TokenType) string {
 
 	case TOKEN_ROUND_CLOSE:
 		return "TOKEN_ROUND_CLOSE"
+
+	case TOKEN_SQUARE_OPEN:
+		return "TOKEN_SQUARE_OPEN"
+
+	case TOKEN_SQUARE_CLOSE:
+		return "TOKEN_SQUARE_CLOSE"
 
 	default:
 		return "TOKEN_UNKNOWN"

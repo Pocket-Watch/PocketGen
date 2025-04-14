@@ -24,8 +24,8 @@ import (
 //
 //   varDecl := identifier ( "[" "]" ) identifier
 
-func main() {
-	data, err := os.ReadFile("test/lexer1.tg")
+func LexerDebuggingThing() {
+	data, err := os.ReadFile("test/cat.tg")
 
 	if err != nil {
 		fmt.Printf("ERROR: Failed to open sample tg file: %v\n", err)
@@ -49,6 +49,22 @@ func main() {
 		}
 
 		token = NextToken(&lexer)
+	}
+}
+
+func main() {
+	LexerDebuggingThing()
+
+	parser, success := CreateParser("test/cat.tg")
+	if !success {
+		os.Exit(1)
+	}
+
+	result := ParseFile(&parser)
+	if !result.success {
+		fmt.Println()
+		fmt.Println(result.message)
+		fmt.Println()
 	}
 
 	exec, err := os.Executable()
