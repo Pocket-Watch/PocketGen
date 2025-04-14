@@ -49,7 +49,7 @@ func CreateParser(path string) (Parser, bool) {
 	}
 
 	lexer := CreateLexer(data)
-	token := NextToken(&lexer)
+	token := lexer.NextToken()
 
 	parser := Parser{
 		filepath: path,
@@ -63,7 +63,7 @@ func CreateParser(path string) (Parser, bool) {
 
 func AdvanceToken(parser *Parser) Token {
 	previous := parser.tokenNow
-	parser.tokenNow = NextToken(&parser.lexer)
+	parser.tokenNow = parser.lexer.NextToken()
 	return previous
 }
 

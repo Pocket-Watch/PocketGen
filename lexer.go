@@ -69,6 +69,11 @@ type LinePos struct {
 	offset int
 }
 
+// Define a Dog type
+type Tokenize interface {
+	NextToken() Token
+}
+
 type Lexer struct {
 	data     []byte
 	line     LinePos
@@ -89,17 +94,17 @@ func CreateLexer(data []byte) Lexer {
 		pos:  0,
 	}
 
-	startRune(&lexer)
+	lexer.startRune()
 	return lexer
 }
 
-func startRune(lexer *Lexer) {
+func (lexer *Lexer) startRune() {
 	rune, runeSize := utf8.DecodeRune(lexer.data)
 	lexer.runeNow = rune
 	lexer.runeSize = runeSize
 }
 
-func nextRune(lexer *Lexer) rune {
+func (lexer *Lexer) nextRune() rune {
 	if lexer.runeNow == '\n' {
 		lexer.line.number += 1
 		lexer.line.offset = 1
@@ -121,7 +126,7 @@ func nextRune(lexer *Lexer) rune {
 	return rune
 }
 
-func peekRune(lexer *Lexer) rune {
+func (lexer *Lexer) peekRune() rune {
 	return lexer.runeNow
 }
 
@@ -177,21 +182,21 @@ func parseWord(lexer *Lexer) (string, bool) {
 	//         - a123_2
 	//         - z______________
 
-	rune := peekRune(lexer)
+	rune := lexer.peekRune()
 	if !unicode.IsLetter(rune) {
 		return "", false
 	}
 
 	startPos := lexer.pos
-	nextRune(lexer)
+	lexer.nextRune()
 
 	for {
-		rune := peekRune(lexer)
+		rune := lexer.peekRune()
 		if !unicode.IsLetter(rune) && !unicode.IsDigit(rune) && rune != '_' {
 			break
 		}
 
-		nextRune(lexer)
+		lexer.nextRune()
 	}
 
 	wordSlice := lexer.data[startPos:lexer.pos]
@@ -201,9 +206,9 @@ func parseWord(lexer *Lexer) (string, bool) {
 }
 
 func skipComment(lexer *Lexer) {
-	rune := peekRune(lexer)
+	rune := lexer.peekRune()
 	for rune != '\n' && rune != 0 {
-		rune = nextRune(lexer)
+		rune = lexer.nextRune()
 	}
 }
 
@@ -215,9 +220,9 @@ func IsKeyword(token Token, keywordType KeywordType) bool {
 	return token.tokenType == TOKEN_KEYWORD && token.tokenValue.string == keywordType
 }
 
-func NextToken(lexer *Lexer) Token {
+func (lexer *Lexer) NextToken() Token {
 	for {
-		rune := peekRune(lexer)
+		rune := lexer.peekRune()
 		line := lexer.line
 
 		switch rune {
@@ -230,43 +235,43 @@ func NextToken(lexer *Lexer) Token {
 
 		// TODO(kihau): Maybe add other white-space characters?
 		case ' ', '\t', '\v', '\r', '\n', '\f':
-			nextRune(lexer)
+			lexer.nextRune()
 			continue
 
 		case '{':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_CURLY_OPEN, line)
 
 		case '}':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_CURLY_CLOSE, line)
 
 		case '(':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_ROUND_OPEN, line)
 
 		case ')':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_ROUND_CLOSE, line)
 
 		case '[':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_SQUARE_OPEN, line)
 
 		case ']':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_SQUARE_CLOSE, line)
 
 		case ',':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_COMMA, line)
 
 		case ';':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_SEMICOLON, line)
 
 		case '?':
-			nextRune(lexer)
+			lexer.nextRune()
 			return makeToken(TOKEN_NULLABLE, line)
 
 		case '#':
@@ -410,7 +415,7 @@ func GenerateTestTokens(data []byte) {
 
 	fmt.Println("expectedTokens := makeTestTokens(")
 	for {
-		token := NextToken(&lexer)
+		token := lexer.NextToken()
 
 		typeString := TokenTypeToString(token.tokenType)
 		fmt.Printf("\ttestToken(%v, \"%v\", %v, %v, %v),\n", typeString, token.tokenValue.string, token.tokenValue.int, token.line.number, token.line.offset)

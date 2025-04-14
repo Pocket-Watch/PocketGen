@@ -93,7 +93,7 @@ func validateLexerTokens(t *testing.T, testPath string, expectedTokens []Token) 
 	lexer := CreateLexer(data)
 	counter := 0
 
-	token := NextToken(&lexer)
+	token := lexer.NextToken()
 	for {
 		// NOTE(kihau):
 		//    This is a sanity check. Because all token streams end with EOF, the loop should always
@@ -115,7 +115,7 @@ func validateLexerTokens(t *testing.T, testPath string, expectedTokens []Token) 
 		}
 
 		counter += 1
-		token = NextToken(&lexer)
+		token = lexer.NextToken()
 	}
 }
 

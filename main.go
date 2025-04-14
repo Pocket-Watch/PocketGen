@@ -35,7 +35,7 @@ func LexerDebuggingThing() {
 	lexer := CreateLexer(data)
 
 	// This will probably be a parser function.
-	token := NextToken(&lexer)
+	token := lexer.NextToken()
 	for {
 		PrintToken(token)
 
@@ -48,7 +48,7 @@ func LexerDebuggingThing() {
 			break
 		}
 
-		token = NextToken(&lexer)
+		token = lexer.NextToken()
 	}
 }
 
@@ -59,7 +59,6 @@ func main() {
 	if !success {
 		os.Exit(1)
 	}
-
 	result := ParseFile(&parser)
 	if !result.success {
 		fmt.Println()
