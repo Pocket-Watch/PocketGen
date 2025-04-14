@@ -69,11 +69,6 @@ type LinePos struct {
 	offset int
 }
 
-// Define a Dog type
-type Tokenize interface {
-	NextToken() Token
-}
-
 type Lexer struct {
 	data     []byte
 	line     LinePos
@@ -221,6 +216,10 @@ func IsKeyword(token Token, keywordType KeywordType) bool {
 }
 
 func (lexer *Lexer) NextToken() Token {
+	return nextToken(lexer)
+}
+
+var nextToken = func(lexer *Lexer) Token {
 	for {
 		rune := lexer.peekRune()
 		line := lexer.line
