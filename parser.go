@@ -13,12 +13,14 @@ type Parser struct {
 }
 
 type TypeDecl struct {
+	line    LinePos
 	name    string
 	fields  []Field
 	methods []FuncDecl
 }
 
 type FuncDecl struct {
+	line       LinePos
 	name       string
 	fields     []Field
 	returnType string
@@ -35,6 +37,7 @@ const (
 )
 
 type Field struct {
+	line      LinePos
 	varName   string
 	typeName  string
 	modifiers FieldModifier
@@ -146,7 +149,7 @@ func (parser *Parser) expectedKeyword(keywordType KeywordType, found Token) Pars
 
 func (parser *Parser) parserErrorMessage(found Token, message string) ParsingResult {
 	line := found.line
-	message = fmt.Sprintf("%v:%v %s", line.number, line.offset, message)
+	message = fmt.Sprintf("%s:%v:%v %s", parser.filepath, line.number, line.offset, message)
 
 	result := ParsingResult{
 		success: false,
@@ -166,7 +169,6 @@ func parseTypeField(parser *Parser, field *Field) ParsingResult {
 	//
 	// Parse the field type
 	//
-
 	is_array_type := false
 	token = PeekToken(parser)
 	if IsType(token, TOKEN_SQUARE_OPEN) {
@@ -180,6 +182,7 @@ func parseTypeField(parser *Parser, field *Field) ParsingResult {
 		return parser.expectedToken(TOKEN_IDENTIFIER, token)
 	}
 
+	field.line = token.line
 	field.typeName = token.tokenValue.string
 
 	token = PeekToken(parser)
@@ -208,13 +211,62 @@ func parseTypeField(parser *Parser, field *Field) ParsingResult {
 	return parserOk()
 }
 
-func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParsingResult {
-	AdvanceToken(parser)
-	// if !IsKeyword(token, KEYWORD_TYPE) {
-	// 	return expectedKeyword(KEYWORD_TYPE, token)
-	// }
-
+func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParsingResult {
 	token := AdvanceToken(parser)
+	funcDecl.line = token.line
+
+	token = AdvanceToken(parser)
+	if !IsType(token, TOKEN_IDENTIFIER) {
+		return parser.expectedToken(TOKEN_IDENTIFIER, token)
+	}
+
+	funcDecl.name = token.tokenValue.string
+
+	token = AdvanceToken(parser)
+	if !IsType(token, TOKEN_ROUND_OPEN) {
+		return parser.expectedToken(TOKEN_ROUND_OPEN, token)
+	}
+
+	token = PeekToken(parser)
+	if IsType(token, TOKEN_ROUND_CLOSE) {
+		AdvanceToken(parser)
+	} else {
+		for {
+			field := Field{}
+			result := parseTypeField(parser, &field)
+			funcDecl.fields = append(funcDecl.fields, field)
+			if !result.success {
+				return result
+			}
+
+			token = PeekToken(parser)
+			if !IsType(token, TOKEN_COMMA) {
+				break
+			}
+
+			AdvanceToken(parser)
+		}
+
+		token := AdvanceToken(parser)
+		if !IsType(token, TOKEN_ROUND_CLOSE) {
+			return parser.expectedToken(TOKEN_ROUND_CLOSE, token)
+		} 
+	}
+
+	token = PeekToken(parser)
+	if IsType(token, TOKEN_IDENTIFIER) {
+		funcDecl.returnType = token.tokenValue.string
+		AdvanceToken(parser)
+	}
+
+	return parserOk()
+}
+
+func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParsingResult {
+	token := AdvanceToken(parser)
+	typeDecl.line = token.line
+
+	token = AdvanceToken(parser)
 	if !IsType(token, TOKEN_IDENTIFIER) {
 		return parser.expectedToken(TOKEN_IDENTIFIER, token)
 	}
@@ -233,8 +285,19 @@ func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParsingResult {
 	}
 
 	for {
-		field := Field{}
-		result := parseTypeField(parser, &field)
+		var result ParsingResult
+
+		token := PeekToken(parser)
+		if IsKeyword(token, KEYWORD_FUNC) {
+			funcDecl := FuncDecl{}
+			result = parseFunctionDeclaration(parser, &funcDecl)
+			typeDecl.methods = append(typeDecl.methods, funcDecl)
+		} else {
+			field := Field{}
+			result = parseTypeField(parser, &field)
+			typeDecl.fields = append(typeDecl.fields, field)
+		}
+
 		if !result.success {
 			return result
 		}
