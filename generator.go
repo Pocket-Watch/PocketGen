@@ -20,7 +20,7 @@ func generateJS(types []TypeDecl, writer *bufio.Writer) {
 		for _, field := range t.fields {
 			writeIndent(INDENT, writer)
 
-			if hasModifier(field, FIELD_CONST) {
+			if field.hasModifier(FIELD_CONST) {
 				writer.WriteString("const ")
 			}
 
@@ -42,7 +42,7 @@ func generateJS(types []TypeDecl, writer *bufio.Writer) {
 					writer.WriteString(", ")
 				}
 
-				if hasModifier(field, FIELD_CONST) {
+				if field.hasModifier(FIELD_CONST) {
 					writer.WriteString("const ")
 				}
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -32,7 +31,18 @@ func mockLexer(tokens []Token) Lexer {
 	return lexer
 }
 
-func TestCat(t *testing.T) {
+func createParserWithLexer(lexer Lexer) Parser {
+	firstToken := lexer.NextToken()
+	parser := Parser{
+		filepath: "test",
+		lexer:    lexer,
+		structs:  make([]TypeDecl, 0),
+		tokenNow: firstToken,
+	}
+	return parser
+}
+
+func TestSingleCatType(t *testing.T) {
 	tokens := makeTestTokens(
 		makeTokenWithValue(TOKEN_KEYWORD, "type"),
 		makeTokenWithValue(TOKEN_IDENTIFIER, "Cat"),
@@ -64,7 +74,76 @@ func TestCat(t *testing.T) {
 	)
 
 	lexer := mockLexer(tokens)
-	for i := 0; i < 30; i++ {
-		fmt.Println(lexer.NextToken())
+	parser := createParserWithLexer(lexer)
+
+	result := ParseFile(&parser)
+	if !result.success {
+		t.Error(result.message)
+		return
+	}
+
+	if len(parser.structs) != 1 {
+		t.Errorf("Expected 1 type, found %v", len(parser.structs))
+		return
+	}
+
+	cat := &parser.structs[0]
+
+	if cat.name != "Cat" {
+		t.Errorf("Expected different type name")
+		return
+	}
+
+	if len(cat.fields) != 2 {
+		t.Errorf("Expected 2 fields, found %v", len(cat.fields))
+		return
+	}
+	nameField := &cat.fields[0]
+	if !nameField.hasModifier(FIELD_CONST) || nameField.typeName != "string" || nameField.varName != "name" {
+		t.Errorf("Expected field[0] to be 'const string name'")
+		return
+	}
+
+	ageField := &cat.fields[1]
+	if ageField.modifiers != 0 {
+		t.Errorf("Expected field[1] to have no modifiers, actual value %v", ageField.modifiers)
+		return
+	}
+	if ageField.typeName != "u32" || ageField.varName != "age" {
+		t.Errorf("Expected field[1] to be 'u32 age', found typeName: %v, varName: %v",
+			ageField.typeName, ageField.varName)
+		return
+	}
+
+	if len(cat.methods) != 1 {
+		t.Errorf("Expected 1 method, found %v", len(cat.methods))
+		return
+	}
+
+	meow := &cat.methods[0]
+	if meow.name != "meow" {
+		t.Errorf("Expected 'meow' as method name")
+		return
+	}
+	if meow.returnType != "string" {
+		t.Errorf("Expected 'string' as return type of method")
+		return
+	}
+
+	if len(meow.fields) != 2 {
+		t.Errorf("Expected 2 arguments to method meow")
+		return
+	}
+
+	sound := &meow.fields[0]
+	if sound.typeName != "string" || sound.varName != "sound" {
+		t.Errorf("Expected 'string sound' as 1st argument to method meow")
+		return
+	}
+
+	volume := &meow.fields[1]
+	if volume.typeName != "u32" || volume.varName != "volume" {
+		t.Errorf("Expected 'u32 volume' as 2nd argument to method meow")
+		return
 	}
 }

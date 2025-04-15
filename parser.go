@@ -89,7 +89,7 @@ func addModifier(field *Field, modifier FieldModifier) bool {
 	return alreadyApplied
 }
 
-func hasModifier(field Field, modifier FieldModifier) bool {
+func (field *Field) hasModifier(modifier FieldModifier) bool {
 	return field.modifiers&modifier != 0
 }
 
