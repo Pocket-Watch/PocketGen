@@ -44,12 +44,12 @@ const (
 
 var KEYWORDS = []KeywordType{KEYWORD_TYPE, KEYWORD_CONST, KEYWORD_FUNC}
 
-const (
-	PRIMITIVE_INT = iota
-	PRIMITIVE_FLOAT
-	PRIMITIVE_STRING
-	PRIMITIVE_CHAR
-)
+var PRIMITIVES = []string{
+	"i8", "i16", "i32", "i64",
+	"u8", "u16", "u32", "u64",
+	"string", "char", "bool",
+	"f32", "f63",
+}
 
 // TokenValue union, matched with TokenType. Go has no unions so this one is fat.
 type TokenValue struct {

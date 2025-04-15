@@ -3,11 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"slices"
 )
 
 type Parser struct {
 	filepath string
 	lexer    Lexer
+	// Instead of storing types in an array, maybe a hash map lookup would be better?
+	// Redeclaration error could then happen during the parsing stage (and not type checking) and be a 'soft' error.
 	structs  []TypeDecl
 	tokenNow Token
 }
@@ -90,13 +93,13 @@ func hasModifier(field Field, modifier FieldModifier) bool {
 	return field.modifiers&modifier != 0
 }
 
-type ParsingResult struct {
+type ParserResult struct {
 	success bool
 	message string
 }
 
-func parserOk() ParsingResult {
-	result := ParsingResult{
+func parserOk() ParserResult {
+	result := ParserResult{
 		success: true,
 		message: "",
 	}
@@ -120,15 +123,15 @@ func (parser *Parser) formatExpectedToken(found Token, format string, args ...an
 
 	line := found.line
 
-	message := fmt.Sprintf("%s:%v:%v Expected %s, but instead %s was found.", parser.filepath, line.number, line.offset, expectedString, foundString)
+	message := fmt.Sprintf("ERROR @ %s:%v:%v Expected %s, but instead %s was found.", parser.filepath, line.number, line.offset, expectedString, foundString)
 	return message
 }
 
-func (parser *Parser) expectedToken(expectedType TokenType, found Token) ParsingResult {
+func (parser *Parser) expectedToken(expectedType TokenType, found Token) ParserResult {
 	expectedString := TokenTypeToString(expectedType)
 	message := parser.formatExpectedToken(found, "token %s", expectedString)
 
-	result := ParsingResult{
+	result := ParserResult{
 		success: false,
 		message: message,
 	}
@@ -136,10 +139,10 @@ func (parser *Parser) expectedToken(expectedType TokenType, found Token) Parsing
 	return result
 }
 
-func (parser *Parser) expectedKeyword(keywordType KeywordType, found Token) ParsingResult {
+func (parser *Parser) expectedKeyword(keywordType KeywordType, found Token) ParserResult {
 	message := parser.formatExpectedToken(found, "keyword '%s'", keywordType)
 
-	result := ParsingResult{
+	result := ParserResult{
 		success: false,
 		message: message,
 	}
@@ -147,11 +150,10 @@ func (parser *Parser) expectedKeyword(keywordType KeywordType, found Token) Pars
 	return result
 }
 
-func (parser *Parser) parserErrorMessage(found Token, message string) ParsingResult {
-	line := found.line
-	message = fmt.Sprintf("%s:%v:%v %s", parser.filepath, line.number, line.offset, message)
+func (parser *Parser) parserErrorMessage(line LinePos, message string) ParserResult {
+	message = fmt.Sprintf("ERROR @ %s:%v:%v %s", parser.filepath, line.number, line.offset, message)
 
-	result := ParsingResult{
+	result := ParserResult{
 		success: false,
 		message: message,
 	}
@@ -159,7 +161,7 @@ func (parser *Parser) parserErrorMessage(found Token, message string) ParsingRes
 	return result
 }
 
-func parseTypeField(parser *Parser, field *Field) ParsingResult {
+func parseTypeField(parser *Parser, field *Field) ParserResult {
 	token := PeekToken(parser)
 	if IsKeyword(token, KEYWORD_CONST) {
 		addModifier(field, FIELD_CONST)
@@ -211,7 +213,7 @@ func parseTypeField(parser *Parser, field *Field) ParsingResult {
 	return parserOk()
 }
 
-func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParsingResult {
+func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParserResult {
 	token := AdvanceToken(parser)
 	funcDecl.line = token.line
 
@@ -250,7 +252,7 @@ func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParsingResult 
 		token := AdvanceToken(parser)
 		if !IsType(token, TOKEN_ROUND_CLOSE) {
 			return parser.expectedToken(TOKEN_ROUND_CLOSE, token)
-		} 
+		}
 	}
 
 	token = PeekToken(parser)
@@ -262,7 +264,7 @@ func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParsingResult 
 	return parserOk()
 }
 
-func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParsingResult {
+func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParserResult {
 	token := AdvanceToken(parser)
 	typeDecl.line = token.line
 
@@ -285,7 +287,7 @@ func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParsingResult {
 	}
 
 	for {
-		var result ParsingResult
+		var result ParserResult
 
 		token := PeekToken(parser)
 		if IsKeyword(token, KEYWORD_FUNC) {
@@ -317,14 +319,14 @@ func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParsingResult {
 	return parserOk()
 }
 
-func ParseFile(parser *Parser) ParsingResult {
+func ParseFile(parser *Parser) ParserResult {
 	for {
 		token := PeekToken(parser)
 		if IsType(token, TOKEN_EOF) {
 			break
 		}
 
-		var result ParsingResult
+		var result ParserResult
 		if IsKeyword(token, KEYWORD_TYPE) {
 			var typeDecl TypeDecl
 			result = parseTypeDeclaration(parser, &typeDecl)
@@ -333,6 +335,43 @@ func ParseFile(parser *Parser) ParsingResult {
 			return parser.expectedKeyword(KEYWORD_TYPE, token)
 		}
 
+		if !result.success {
+			return result
+		}
+	}
+
+	return parserOk()
+}
+
+func CheckForRedeclarations(parser *Parser, decl TypeDecl, pos int) ParserResult {
+	for i, otherDecl := range parser.structs {
+		if i == pos {
+			continue
+		}
+
+		if decl.name == otherDecl.name {
+			firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, decl.line.number, decl.line.offset, decl.name)
+			secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, otherDecl.line.number, otherDecl.line.offset, otherDecl.name)
+			message := fmt.Sprintf("ERROR: Type '%s' was declared multiple times:\n%s\n%s\n", decl.name, firstDeclare, secondDeclare)
+			result := ParserResult{
+				success: false,
+				message: message,
+			}
+
+			return result
+		}
+	}
+
+	return parserOk()
+}
+
+func TypecheckFile(parser *Parser) ParserResult {
+	for i, decl := range parser.structs {
+		if slices.Contains(PRIMITIVES, decl.name) {
+			return parser.parserErrorMessage(decl.line, "Declared type uses reserved name for type primitives.")
+		}
+
+		result := CheckForRedeclarations(parser, decl, i)
 		if !result.success {
 			return result
 		}

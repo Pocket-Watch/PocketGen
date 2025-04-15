@@ -11,15 +11,16 @@ func TestJSGen(t *testing.T) {
 	catDecl := TypeDecl{
 		name: "Cat",
 		fields: []Field{
-			{"name", "string", FIELD_CONST},
-			{"age", "u32", FIELD_NONE},
+			{LinePos{0, 0}, "name", "string", FIELD_CONST},
+			{LinePos{0, 0}, "age", "u32", FIELD_NONE},
 		},
 		methods: []FuncDecl{
 			{
+				LinePos{0, 0},
 				"meow",
 				[]Field{
-					{"sound", "string", FIELD_NONE},
-					{"volume", "u32", FIELD_NONE},
+					{LinePos{0, 0}, "sound", "string", FIELD_NONE},
+					{LinePos{0, 0}, "volume", "u32", FIELD_NONE},
 				},
 				"string",
 			},
