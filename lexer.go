@@ -48,7 +48,7 @@ var PRIMITIVES = []string{
 	"i8", "i16", "i32", "i64",
 	"u8", "u16", "u32", "u64",
 	"string", "char", "bool",
-	"f32", "f63",
+	"f32", "f64",
 }
 
 // TokenValue union, matched with TokenType. Go has no unions so this one is fat.
@@ -57,7 +57,7 @@ type TokenValue struct {
 	int    int
 }
 
-type Token struct {
+type Token struct { 
 	line       LinePos
 	tokenType  TokenType
 	tokenValue TokenValue

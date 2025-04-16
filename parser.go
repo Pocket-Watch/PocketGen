@@ -365,6 +365,63 @@ func CheckForRedeclarations(parser *Parser, decl TypeDecl, pos int) ParserResult
 	return parserOk()
 }
 
+func VerifyFieldType(parser *Parser, field *Field) ParserResult {
+	if slices.Contains(PRIMITIVES, field.typeName) {
+		addModifier(field, FIELD_PRIMITIVE)
+		return parserOk()
+	}
+
+	for _, decl := range parser.structs {
+		if decl.name == field.typeName {
+			return parserOk()
+		}
+	}
+
+	message := fmt.Sprintf("ERROR @ %s:%v:%v Type of field '%s' was never declared.", parser.filepath, field.line.number, field.line.offset, field.typeName)
+	result := ParserResult{
+		success: false,
+		message: message,
+	}
+
+	return result
+}
+
+func VerifyType(parser *Parser, typename string) bool {
+	if slices.Contains(PRIMITIVES, typename) {
+		return true
+	}
+
+	for _, decl := range parser.structs {
+		if decl.name == typename {
+			return true
+		}
+	}
+
+	return false
+}
+
+func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *FuncDecl) ParserResult {
+	if !VerifyType(parser, funcDecl.returnType) {
+		message := fmt.Sprintf("ERROR @ %s:%v:%v Return type '%s', of method '%s::%s' is undeclared.", parser.filepath, funcDecl.line.number, funcDecl.line.offset, funcDecl.returnType, parentType.name, funcDecl.name)
+		result := ParserResult{
+			success: false,
+			message: message,
+		}
+
+		return result
+	}
+
+	for i := range funcDecl.fields {
+		field := &funcDecl.fields[i]
+		result := VerifyFieldType(parser, field)
+		if !result.success {
+			return result
+		}
+	}
+
+	return parserOk();
+}
+
 func TypecheckFile(parser *Parser) ParserResult {
 	for i, decl := range parser.structs {
 		if slices.Contains(PRIMITIVES, decl.name) {
@@ -374,6 +431,22 @@ func TypecheckFile(parser *Parser) ParserResult {
 		result := CheckForRedeclarations(parser, decl, i)
 		if !result.success {
 			return result
+		}
+
+		for j := range decl.fields {
+			field := &parser.structs[i].fields[j]
+			result := VerifyFieldType(parser, field)
+			if !result.success {
+				return result
+			}
+		}
+
+		for j := range decl.methods {
+			funcDecl := &parser.structs[i].methods[j]
+			result := VerifyFunctionDeclaration(parser, decl, funcDecl)
+			if !result.success {
+				return result
+			}
 		}
 	}
 
