@@ -343,7 +343,7 @@ func ParseFile(parser *Parser) ParserResult {
 	return parserOk()
 }
 
-func CheckForRedeclarations(parser *Parser, decl TypeDecl, pos int) ParserResult {
+func CheckForTypeRedeclarations(parser *Parser, decl TypeDecl, pos int) ParserResult {
 	for i, otherDecl := range parser.structs {
 		if i == pos {
 			continue
@@ -417,9 +417,36 @@ func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *Fu
 		if !result.success {
 			return result
 		}
+
+		result = CheckForFieldRedeclarations(parser, funcDecl.fields, *field, i)
+		if !result.success {
+			return result
+		}
 	}
 
 	return parserOk();
+}
+
+func CheckForFieldRedeclarations(parser *Parser, fields []Field, field Field, pos int) ParserResult {
+	for i, otherField := range fields {
+		if i == pos {
+			continue
+		}
+
+		if field.varName == otherField.varName {
+			firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, field.line.number, field.line.offset, field.varName)
+			secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, otherField.line.number, otherField.line.offset, otherField.varName)
+			message := fmt.Sprintf("ERROR: Field '%s' was declared multiple times:\n%s\n%s\n", field.varName, firstDeclare, secondDeclare)
+			result := ParserResult{
+				success: false,
+				message: message,
+			}
+
+			return result
+		}
+	}
+
+	return parserOk()
 }
 
 func TypecheckFile(parser *Parser) ParserResult {
@@ -428,7 +455,7 @@ func TypecheckFile(parser *Parser) ParserResult {
 			return parser.parserErrorMessage(decl.line, "Declared type uses reserved name for type primitives.")
 		}
 
-		result := CheckForRedeclarations(parser, decl, i)
+		result := CheckForTypeRedeclarations(parser, decl, i)
 		if !result.success {
 			return result
 		}
@@ -436,6 +463,11 @@ func TypecheckFile(parser *Parser) ParserResult {
 		for j := range decl.fields {
 			field := &parser.structs[i].fields[j]
 			result := VerifyFieldType(parser, field)
+			if !result.success {
+				return result
+			}
+
+			result = CheckForFieldRedeclarations(parser, decl.fields, *field, j)
 			if !result.success {
 				return result
 			}
