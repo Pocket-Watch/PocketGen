@@ -17,46 +17,58 @@ func generateJS(types []TypeDecl, writer *bufio.Writer) {
 		writer.WriteString(t.name)
 		writer.WriteString(" {\n")
 
-		for _, field := range t.fields {
-			writeIndent(INDENT, writer)
+		writeIndent(INDENT, writer)
+		writeJsConstructor(t.fields, INDENT, writer)
+		writeJsMethods(t.methods, INDENT, writer)
 
-			if field.hasModifier(FIELD_CONST) {
-				writer.WriteString("const ")
-			}
-
-			writer.WriteString(field.varName)
-			writer.WriteString(";\n")
-		}
-
-		for _, fn := range t.methods {
-			writeIndent(INDENT, writer)
-			writer.WriteString("function ")
-			writer.WriteString(fn.name)
-			writer.WriteByte('(')
-
-			firstModifier := true
-			for _, field := range fn.fields {
-				if firstModifier {
-					firstModifier = false
-				} else {
-					writer.WriteString(", ")
-				}
-
-				if field.hasModifier(FIELD_CONST) {
-					writer.WriteString("const ")
-				}
-
-				writer.WriteString(field.varName)
-			}
-			writer.WriteByte(')')
-			if fn.returnType != "" {
-				writer.WriteString(" " + fn.returnType)
-			}
-			writer.WriteString(";\n")
-		}
-		writer.WriteString("}\n")
 		writer.Flush()
 	}
+}
+
+func writeJsMethods(methods []FuncDecl, currentIndent int, writer *bufio.Writer) {
+	for _, fn := range methods {
+		writeIndent(currentIndent, writer)
+		writer.WriteString(fn.name)
+		writer.WriteByte('(')
+
+		first := true
+		for _, field := range fn.fields {
+			if first {
+				first = false
+			} else {
+				writer.WriteString(", ")
+			}
+			writer.WriteString(field.varName)
+		}
+		// TODO: optionally generate TODO("unimplemented")
+		writer.WriteString(") {}\n")
+	}
+	writer.WriteString("}\n")
+}
+
+func writeJsConstructor(fields []Field, currentIndent int, writer *bufio.Writer) {
+	writer.WriteString("constructor(")
+	first := true
+	for _, field := range fields {
+		if first {
+			first = false
+		} else {
+			writer.WriteString(", ")
+		}
+		writer.WriteString(field.varName)
+	}
+	writer.WriteString(") {\n")
+	for _, field := range fields {
+		writeIndent(currentIndent+INDENT, writer)
+		writer.WriteString("this.")
+		writer.WriteString(field.varName)
+		writer.WriteString(" = ")
+		writer.WriteString(field.varName)
+		writer.WriteByte(';')
+		writer.WriteByte('\n')
+	}
+	writeIndent(currentIndent, writer)
+	writer.WriteString("}\n")
 }
 
 func writeIndent(indent int, writer *bufio.Writer) {
