@@ -484,3 +484,23 @@ func TypecheckFile(parser *Parser) ParserResult {
 
 	return parserOk()
 }
+
+func RunScratchParser(path string) {
+	// parser, success := CreateParser("test/cat.tg")
+	parser, success := CreateParser(path)
+	if !success {
+		os.Exit(1)
+	}
+
+	result := ParseFile(&parser)
+	if !result.success {
+		fmt.Println(result.message)
+		os.Exit(1)
+	}
+
+	result = TypecheckFile(&parser)
+	if !result.success {
+		fmt.Println(result.message)
+		os.Exit(1)
+	}
+}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"unicode"
 	"unicode/utf8"
@@ -424,4 +425,32 @@ func GenerateTestTokens(data []byte) {
 		}
 	}
 	fmt.Println(")")
+}
+
+
+func RunLexerScratch(path string) {
+	data, err := os.ReadFile(path)
+
+	if err != nil {
+		fmt.Printf("ERROR: Failed to open sample tg file: %v\n", err)
+		return
+	}
+
+	lexer := CreateLexer(data)
+
+	token := lexer.NextToken()
+	for {
+		PrintToken(token)
+
+		if IsType(token, TOKEN_EOF) {
+			break
+		}
+
+		if IsType(token, TOKEN_ERROR) {
+			println("Token bad, also the parser will handle this.")
+			break
+		}
+
+		token = lexer.NextToken()
+	}
 }
