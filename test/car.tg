@@ -1,0 +1,8 @@
+type Car {
+    #Numbers
+    u32 yearProduced; u32 hp; u32 doors;
+    #Details
+    const string brand;
+
+    func drive() ;
+}
