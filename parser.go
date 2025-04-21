@@ -401,7 +401,7 @@ func VerifyType(parser *Parser, typename string) bool {
 }
 
 func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *FuncDecl) ParserResult {
-	if !VerifyType(parser, funcDecl.returnType) {
+	if funcDecl.returnType != "" && !VerifyType(parser, funcDecl.returnType) {
 		message := fmt.Sprintf("ERROR @ %s:%v:%v Return type '%s', of method '%s::%s' is undeclared.", parser.filepath, funcDecl.line.number, funcDecl.line.offset, funcDecl.returnType, parentType.name, funcDecl.name)
 		result := ParserResult{
 			success: false,
