@@ -424,7 +424,7 @@ func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *Fu
 		}
 	}
 
-	return parserOk();
+	return parserOk()
 }
 
 func CheckForFieldRedeclarations(parser *Parser, fields []Field, field Field, pos int) ParserResult {

@@ -87,7 +87,6 @@ func openWriter(filename string) *bufio.Writer {
 		}
 		return nil
 	}
-	defer file.Close()
 
 	writer := bufio.NewWriter(file)
 	return writer

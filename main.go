@@ -52,19 +52,7 @@ func LexerDebuggingThing(path string) {
 	}
 }
 
-func main() {
-	exec, err := os.Executable()
-	if err != nil {
-		exec = ""
-	}
-	fmt.Println("Usage:")
-	fmt.Printf("  %v\n", exec)
-	fmt.Println()
-
-	LexerDebuggingThing("test/cat.tg")
-
-	fmt.Println()
-
+func ParserDebuggingThing() {
 	parser, success := CreateParser("test/cat.tg")
 	if !success {
 		os.Exit(1)
@@ -81,4 +69,8 @@ func main() {
 		fmt.Println(result.message)
 		os.Exit(1)
 	}
+}
+
+func main() {
+	executeCLI()
 }
