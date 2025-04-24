@@ -32,7 +32,8 @@ func TestJSGen(t *testing.T) {
 	var buffer bytes.Buffer
 	writer := bufio.NewWriter(&buffer)
 
-	generateJS([]TypeDecl{catDecl}, writer)
+	js := JavascriptGenerator{defaultOptions()}
+	js.generate([]TypeDecl{catDecl}, writer)
 
 	output := buffer.String()
 	t.Log("\n" + output)

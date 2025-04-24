@@ -92,7 +92,11 @@ func executeCLI() {
 
 		switch language {
 		case JAVASCRIPT:
-			generateJS(parser.structs, writer)
+			js := JavascriptGenerator{defaultOptions()}
+			js.generate(parser.structs, writer)
+		case GO:
+			goGen := GoGenerator{defaultOptions()}
+			goGen.generate(parser.structs, writer)
 		default:
 			fmt.Println("Unsupported language (coming soon).")
 			os.Exit(1)
@@ -128,6 +132,7 @@ const (
 	NONE Language = iota
 	GO
 	JAVASCRIPT
+	KOTLIN
 	JAVA
 	C_SHARP
 	RUST
@@ -135,12 +140,14 @@ const (
 
 func languageIdentifierToLanguage(lang string) Language {
 	switch strings.ToLower(lang) {
-	case "go":
+	case "go", "golang":
 		return GO
 	case "js", "javascript":
 		return JAVASCRIPT
 	case "java":
 		return JAVA
+	case "kt", "kotlin":
+		return KOTLIN
 	case "rs", "rust":
 		return RUST
 	case "cs", "csharp":
@@ -157,6 +164,8 @@ func languageToExtension(language Language) string {
 		return ".js"
 	case JAVA:
 		return ".java"
+	case KOTLIN:
+		return ".kt"
 	case RUST:
 		return ".rs"
 	case C_SHARP:
