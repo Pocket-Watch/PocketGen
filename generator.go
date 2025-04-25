@@ -11,16 +11,19 @@ import (
 // How to handle every Write since they can return errors at any point?
 
 type GeneratorOptions struct {
-	indent              int
-	separateDefinitions bool
-	packageName         string
+	indent               int
+	separateDefinitions  bool
+	packageName          string
+	receiverNameFallback string
 }
 
+// These require validation against specific languages
 func defaultOptions() GeneratorOptions {
 	return GeneratorOptions{
-		indent:              4,
-		separateDefinitions: true,
-		packageName:         "main",
+		indent:               4,
+		separateDefinitions:  true,
+		packageName:          "main",
+		receiverNameFallback: "this",
 	}
 }
 
@@ -141,12 +144,17 @@ func (gen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 	for _, fn := range typeDecl.methods {
 		writer.WriteString("func (")
-		receiver := toReceiverName(typeDecl.name)
+		receiver := gen.toReceiverName(typeDecl.name)
 		writer.WriteString(receiver)
 		writer.WriteString(" *")
 		writer.WriteString(typeDecl.name)
 		writer.WriteString(") ")
 		writer.WriteString(fn.name)
+		if slices.Contains(GO_KEYWORDS, fn.name) {
+			// Prevent keyword collision error, append type name to method name
+			writer.WriteString(typeDecl.name)
+		}
+
 		writer.WriteByte('(')
 		first := true
 		for _, field := range fn.fields {
@@ -208,11 +216,11 @@ func (gen *GoGenerator) toGoType(typeName string) string {
 }
 
 // This
-func toReceiverName(name string) string {
+func (gen *GoGenerator) toReceiverName(name string) string {
 	receiver := strings.ToLower(string(name[0])) + name[1:]
 	if slices.Contains(GO_KEYWORDS, receiver) {
 		// Generic receiver to prevent collisions with keywords
-		return "this"
+		return gen.options.receiverNameFallback
 	}
 	return receiver
 }
