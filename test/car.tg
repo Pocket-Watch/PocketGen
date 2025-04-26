@@ -12,6 +12,7 @@ type Details {
     const string brand;
     #Numbers
     u64 mileage; i8 gears; f64 fuelConsumption;
+    [string] features;
 
     func display() string;
 }

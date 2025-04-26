@@ -31,6 +31,14 @@ type JavascriptGenerator struct {
 	options GeneratorOptions
 }
 
+type GoGenerator struct {
+	options GeneratorOptions
+}
+
+type JavaGenerator struct {
+	options GeneratorOptions
+}
+
 // Writes Javascript definitions based on type declarations
 func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bufio.Writer) {
 	indent := js.options.indent
@@ -102,10 +110,6 @@ func (js *JavascriptGenerator) writeConstructor(fields []Field, writer *bufio.Wr
 	writer.WriteString("}\n")
 }
 
-type GoGenerator struct {
-	options GeneratorOptions
-}
-
 // Writes Go definitions based on type declarations
 func (gen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer) {
 	writer.WriteString("package ")
@@ -135,6 +139,9 @@ func (gen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 		writeIndent(indent, writer)
 		writer.WriteString(field.varName)
 		writer.WriteByte(' ')
+		if field.hasModifier(FIELD_ARRAY) {
+			writer.WriteString("[]")
+		}
 		goType := gen.toGoType(field.typeName)
 		writer.WriteString(goType)
 		writer.WriteString("\n")
@@ -182,7 +189,7 @@ func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 	writer.WriteString("\n")
 }
 
-func (gen *GoGenerator) toGoType(typeName string) string {
+func (*GoGenerator) toGoType(typeName string) string {
 	switch typeName {
 	case "i8":
 		return "int8"
@@ -215,6 +222,31 @@ func (gen *GoGenerator) toGoType(typeName string) string {
 	}
 }
 
+func (*JavaGenerator) toJavaType(typeName string) string {
+	switch typeName {
+	case "i8", "u8":
+		return "byte"
+	case "i16", "u16":
+		return "short"
+	case "i32", "u32":
+		return "int"
+	case "i64", "u64":
+		return "long"
+	case "f32":
+		return "float"
+	case "f64":
+		return "double"
+	case "string":
+		return "String"
+	case "char":
+		return "char"
+	case "bool":
+		return "boolean"
+	default:
+		return typeName
+	}
+}
+
 // This
 func (gen *GoGenerator) toReceiverName(name string) string {
 	receiver := strings.ToLower(string(name[0])) + name[1:]
@@ -232,6 +264,134 @@ var GO_KEYWORDS = []string{
 	"chan", "else", "goto", "package", "switch",
 	"const", "fallthrough", "if", "range", "type",
 	"continue", "for", "import", "return", "var",
+}
+
+// Writes Javascript definitions based on type declarations
+func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer) {
+	firstType := true
+	// May require specifying package name
+	for _, t := range types {
+		if firstType {
+			firstType = false
+		} else if java.options.separateDefinitions {
+			writer.WriteString("\n")
+		}
+		writer.WriteString("class ")
+		writer.WriteString(t.name)
+		writer.WriteString(" {\n")
+
+		java.writeFields(t.fields, writer)
+		writer.WriteString("\n")
+		java.writeConstructor(t, writer)
+		java.writeMethods(t, writer)
+		writer.WriteString("}\n")
+	}
+	writer.Flush()
+}
+
+func (java *JavaGenerator) writeFields(fields []Field, writer *bufio.Writer) {
+	indent := java.options.indent
+	for _, field := range fields {
+		writeIndent(indent, writer)
+		if field.hasModifier(FIELD_CONST) {
+			writer.WriteString("final ")
+		}
+		javaType := java.toJavaType(field.typeName)
+		writer.WriteString(javaType)
+		if field.hasModifier(FIELD_ARRAY) {
+			writer.WriteString("[]")
+		}
+		writer.WriteByte(' ')
+		writer.WriteString(field.varName)
+		writer.WriteString(";\n")
+	}
+}
+
+func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
+	indent := java.options.indent
+	writeIndent(indent, writer)
+	writer.WriteString(t.name)
+	writer.WriteString("(")
+	first := true
+	for _, field := range t.fields {
+		if first {
+			first = false
+		} else {
+			writer.WriteString(", ")
+		}
+		javaType := java.toJavaType(field.typeName)
+		writer.WriteString(javaType)
+		if field.hasModifier(FIELD_ARRAY) {
+			writer.WriteString("[]")
+		}
+		writer.WriteByte(' ')
+		writer.WriteString(field.varName)
+	}
+	writer.WriteString(") {\n")
+	for _, field := range t.fields {
+		writeIndent(2*indent, writer)
+		writer.WriteString("this.")
+		writer.WriteString(field.varName)
+		writer.WriteString(" = ")
+		writer.WriteString(field.varName)
+		writer.WriteByte(';')
+		writer.WriteByte('\n')
+	}
+	writeIndent(indent, writer)
+	writer.WriteString("}\n")
+}
+
+func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+	indent := java.options.indent
+	for _, fn := range typeDecl.methods {
+		writeIndent(indent, writer)
+		if fn.returnType == "" {
+			writer.WriteString("void")
+		} else {
+			writer.WriteString(java.toJavaType(fn.returnType))
+		}
+		writer.WriteByte(' ')
+		writer.WriteString(fn.name)
+		if slices.Contains(JAVA_KEYWORDS, fn.name) {
+			// Prevent keyword collision error, append type name to method name
+			writer.WriteString(typeDecl.name)
+		}
+
+		writer.WriteByte('(')
+		firstField := true
+		for _, field := range fn.fields {
+			if firstField {
+				firstField = false
+			} else {
+				writer.WriteString(", ")
+			}
+			javaType := java.toJavaType(field.typeName)
+			writer.WriteString(javaType)
+			if field.hasModifier(FIELD_ARRAY) {
+				writer.WriteString("[]")
+			}
+			writer.WriteByte(' ')
+			writer.WriteString(field.varName)
+		}
+		writer.WriteString(") {\n")
+		writeIndent(2*indent, writer)
+		writer.WriteString("throw new RuntimeException(\"TODO: Unimplemented method\");\n")
+		writeIndent(indent, writer)
+		writer.WriteString("}\n")
+	}
+}
+
+var JAVA_KEYWORDS = []string{
+	"abstract", "continue", "for", "new", "switch",
+	"assert", "default", "goto", "package", "synchronized",
+	"boolean", "do", "if", "private", "this",
+	"break", "double", "implements", "protected", "throw",
+	"byte", "else", "import", "public", "throws",
+	"case", "enum", "instanceof", "return", "transient",
+	"catch", "extends", "int", "short", "try",
+	"char", "final", "interface", "static", "void",
+	"class", "finally", "long", "strictfp", "volatile",
+	"const", "float", "native", "super", "while",
 }
 
 func writeIndent(indent int, writer *bufio.Writer) {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const EXTENSION = ".tg"
@@ -62,6 +63,7 @@ func executeCLI() {
 		fmt.Printf("Nothing to do. Ensure your files end with %v\n", EXTENSION)
 		os.Exit(1)
 	}
+	start := time.Now()
 	fmt.Printf("Processing %v files\n", len(files))
 	for _, file := range files {
 		fmt.Printf("  %v\n", file)
@@ -97,11 +99,17 @@ func executeCLI() {
 		case GO:
 			goGen := GoGenerator{defaultOptions()}
 			goGen.generate(parser.structs, writer)
+		case JAVA:
+			java := JavaGenerator{defaultOptions()}
+			java.generate(parser.structs, writer)
 		default:
 			fmt.Println("Unsupported language (coming soon).")
 			os.Exit(1)
 		}
 	}
+	end := time.Now()
+	timeElapsed := end.Sub(start)
+	fmt.Printf("Time elapsed processing: %v\n", timeElapsed)
 }
 
 func changeExtension(file string, newExtension string) string {
