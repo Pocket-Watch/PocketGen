@@ -27,3 +27,11 @@ go.work.sum
 .env
 
 pocketgen
+
+# auto-generated files in test directory (change it when tests are moved)
+test/*.java
+test/*.js
+test/*.rs
+test/*.kt
+test/*.cs
+test/*.go

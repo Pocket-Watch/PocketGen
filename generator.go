@@ -42,11 +42,9 @@ type JavaGenerator struct {
 // Writes Javascript definitions based on type declarations
 func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bufio.Writer) {
 	indent := js.options.indent
-	firstType := true
+	joiner := newJoiner()
 	for _, t := range types {
-		if firstType {
-			firstType = false
-		} else if js.options.separateDefinitions {
+		if joiner.join() && js.options.separateDefinitions {
 			writer.WriteString("\n")
 		}
 		// TypeDecl has no information if it's an enum or class
@@ -69,11 +67,9 @@ func (js *JavascriptGenerator) writeMethods(methods []FuncDecl, writer *bufio.Wr
 		writer.WriteString(fn.name)
 		writer.WriteByte('(')
 
-		first := true
+		joiner := newJoiner()
 		for _, field := range fn.fields {
-			if first {
-				first = false
-			} else {
+			if joiner.join() {
 				writer.WriteString(", ")
 			}
 			writer.WriteString(field.varName)
@@ -87,11 +83,9 @@ func (js *JavascriptGenerator) writeMethods(methods []FuncDecl, writer *bufio.Wr
 func (js *JavascriptGenerator) writeConstructor(fields []Field, writer *bufio.Writer) {
 	indent := js.options.indent
 	writer.WriteString("constructor(")
-	first := true
+	joiner := newJoiner()
 	for _, field := range fields {
-		if first {
-			first = false
-		} else {
+		if joiner.join() {
 			writer.WriteString(", ")
 		}
 		writer.WriteString(field.varName)
@@ -115,11 +109,9 @@ func (gen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer) {
 	writer.WriteString("package ")
 	writer.WriteString(gen.options.packageName)
 	writer.WriteString("\n\n")
-	firstType := true
+	typeJoiner := newJoiner()
 	for _, t := range types {
-		if firstType {
-			firstType = false
-		} else if gen.options.separateDefinitions {
+		if typeJoiner.join() && gen.options.separateDefinitions {
 			writer.WriteString("\n")
 		}
 		writer.WriteString("type ")
@@ -163,11 +155,9 @@ func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 		}
 
 		writer.WriteByte('(')
-		first := true
+		joiner := newJoiner()
 		for _, field := range fn.fields {
-			if first {
-				first = false
-			} else {
+			if joiner.join() {
 				writer.WriteString(", ")
 			}
 			writer.WriteString(field.varName)
@@ -268,12 +258,10 @@ var GO_KEYWORDS = []string{
 
 // Writes Javascript definitions based on type declarations
 func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer) {
-	firstType := true
+	joiner := newJoiner()
 	// May require specifying package name
 	for _, t := range types {
-		if firstType {
-			firstType = false
-		} else if java.options.separateDefinitions {
+		if joiner.join() && java.options.separateDefinitions {
 			writer.WriteString("\n")
 		}
 		writer.WriteString("class ")
@@ -312,11 +300,9 @@ func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
 	writeIndent(indent, writer)
 	writer.WriteString(t.name)
 	writer.WriteString("(")
-	first := true
+	join := newJoiner()
 	for _, field := range t.fields {
-		if first {
-			first = false
-		} else {
+		if join.join() {
 			writer.WriteString(", ")
 		}
 		javaType := java.toJavaType(field.typeName)
@@ -358,11 +344,9 @@ func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer)
 		}
 
 		writer.WriteByte('(')
-		firstField := true
+		fieldJoiner := newJoiner()
 		for _, field := range fn.fields {
-			if firstField {
-				firstField = false
-			} else {
+			if fieldJoiner.join() {
 				writer.WriteString(", ")
 			}
 			javaType := java.toJavaType(field.typeName)
@@ -379,6 +363,28 @@ func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer)
 		writeIndent(indent, writer)
 		writer.WriteString("}\n")
 	}
+}
+
+// Joiner abstracts the logic of applying separators
+type Joiner struct {
+	firstCall bool
+}
+
+func newJoiner() Joiner {
+	return Joiner{firstCall: true}
+}
+
+// Rejects the first call and allows every subsequent one
+func (j *Joiner) join() bool {
+	if j.firstCall {
+		j.firstCall = false
+		return false
+	}
+	return true
+}
+
+func (j *Joiner) reset() {
+	j.firstCall = true
 }
 
 var JAVA_KEYWORDS = []string{
