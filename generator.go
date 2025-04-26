@@ -129,13 +129,12 @@ func (gen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 	indent := gen.options.indent
 	for _, field := range fields {
 		writeIndent(indent, writer)
-		writer.WriteString(field.varName)
+		writer.WriteString(gen.toFieldName(field.varName))
 		writer.WriteByte(' ')
 		if field.hasModifier(FIELD_ARRAY) {
 			writer.WriteString("[]")
 		}
-		goType := gen.toGoType(field.typeName)
-		writer.WriteString(goType)
+		writer.WriteString(gen.toGoType(field.typeName))
 		writer.WriteString("\n")
 	}
 }
@@ -160,7 +159,7 @@ func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 			if joiner.join() {
 				writer.WriteString(", ")
 			}
-			writer.WriteString(field.varName)
+			writer.WriteString(gen.toFieldName(field.varName))
 			writer.WriteByte(' ')
 			goType := gen.toGoType(field.typeName)
 			writer.WriteString(goType)
@@ -237,6 +236,22 @@ func (*JavaGenerator) toJavaType(typeName string) string {
 	}
 }
 
+// Need a strategy to resolve collisions with keywords
+func (*JavaGenerator) toFieldName(name string) string {
+	if slices.Contains(JAVA_KEYWORDS, name) {
+		return name + "0"
+	}
+	return name
+}
+
+// Need a strategy to resolve collisions with keywords
+func (*GoGenerator) toFieldName(name string) string {
+	if slices.Contains(GO_KEYWORDS, name) {
+		return name + "0"
+	}
+	return name
+}
+
 // This
 func (gen *GoGenerator) toReceiverName(name string) string {
 	receiver := strings.ToLower(string(name[0])) + name[1:]
@@ -290,7 +305,7 @@ func (java *JavaGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 			writer.WriteString("[]")
 		}
 		writer.WriteByte(' ')
-		writer.WriteString(field.varName)
+		writer.WriteString(java.toFieldName(field.varName))
 		writer.WriteString(";\n")
 	}
 }
@@ -311,15 +326,16 @@ func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
 			writer.WriteString("[]")
 		}
 		writer.WriteByte(' ')
-		writer.WriteString(field.varName)
+		writer.WriteString(java.toFieldName(field.varName))
 	}
 	writer.WriteString(") {\n")
 	for _, field := range t.fields {
 		writeIndent(2*indent, writer)
+		varName := java.toFieldName(field.varName)
 		writer.WriteString("this.")
-		writer.WriteString(field.varName)
+		writer.WriteString(varName)
 		writer.WriteString(" = ")
-		writer.WriteString(field.varName)
+		writer.WriteString(varName)
 		writer.WriteByte(';')
 		writer.WriteByte('\n')
 	}
@@ -355,7 +371,7 @@ func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer)
 				writer.WriteString("[]")
 			}
 			writer.WriteByte(' ')
-			writer.WriteString(field.varName)
+			writer.WriteString(java.toFieldName(field.varName))
 		}
 		writer.WriteString(") {\n")
 		writeIndent(2*indent, writer)

@@ -140,6 +140,7 @@ const (
 	NONE Language = iota
 	GO
 	JAVASCRIPT
+	TYPESCRIPT
 	KOTLIN
 	JAVA
 	C_SHARP
@@ -152,6 +153,8 @@ func languageIdentifierToLanguage(lang string) Language {
 		return GO
 	case "js", "javascript":
 		return JAVASCRIPT
+	case "ts", "typescript":
+		return TYPESCRIPT
 	case "java":
 		return JAVA
 	case "kt", "kotlin":
@@ -170,6 +173,8 @@ func languageToExtension(language Language) string {
 		return ".go"
 	case JAVASCRIPT:
 		return ".js"
+	case TYPESCRIPT:
+		return ".ts"
 	case JAVA:
 		return ".java"
 	case KOTLIN:
