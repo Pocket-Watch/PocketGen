@@ -98,10 +98,18 @@ func executeCLI() {
 			js.generate(parser.structs, writer)
 		case GO:
 			goGen := GoGenerator{defaultOptions()}
-			goGen.generate(parser.structs, writer)
+			err = goGen.generate(parser.structs, writer)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		case JAVA:
 			java := JavaGenerator{defaultOptions()}
-			java.generate(parser.structs, writer)
+			err = java.generate(parser.structs, writer)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		default:
 			fmt.Println("Unsupported language (coming soon).")
 			os.Exit(1)

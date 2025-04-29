@@ -1,6 +1,11 @@
 # PocketGen
 Language code meta generator
 
+## Supported languages:
+- Java
+- Go
+- JavaScript
+
 ## Language constructs
 ### Keywords
 ```
