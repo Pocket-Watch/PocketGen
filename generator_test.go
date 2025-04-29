@@ -8,22 +8,49 @@ import (
 )
 
 func TestJSGen(t *testing.T) {
-	// Mirror of cat.tg
+	// Mirror of cat.tg (except the line number)
 	catDecl := TypeDecl{
-		name: "Cat",
+		line:     LinePos{0, 0},
+		typeName: "Cat",
+		typeLine: LinePos{0, 0},
 		fields: []Field{
-			{LinePos{0, 0}, "name", "string", FIELD_CONST},
-			{LinePos{0, 0}, "age", "u32", FIELD_NONE},
+			{
+				varName:   "name",
+				varLine:   LinePos{0, 0},
+				typeName:  "string",
+				typeLine:  LinePos{0, 0},
+				modifiers: FIELD_CONST,
+			},
+			{
+				varName:   "age",
+				varLine:   LinePos{0, 0},
+				typeName:  "u32",
+				typeLine:  LinePos{0, 0},
+				modifiers: FIELD_NONE,
+			},
 		},
 		methods: []FuncDecl{
 			{
-				LinePos{0, 0},
-				"meow",
-				[]Field{
-					{LinePos{0, 0}, "sound", "string", FIELD_NONE},
-					{LinePos{0, 0}, "volume", "u32", FIELD_NONE},
+				line: LinePos{0, 0},
+				name: "meow",
+				fields: []Field{
+					{
+						varName:   "sound",
+						varLine:   LinePos{0, 0},
+						typeName:  "string",
+						typeLine:  LinePos{0, 0},
+						modifiers: FIELD_NONE,
+					},
+					{
+						varName:   "volume",
+						varLine:   LinePos{0, 0},
+						typeName:  "u32",
+						typeLine:  LinePos{0, 0},
+						modifiers: FIELD_NONE,
+					},
 				},
-				"string",
+				returnType: "string",
+				returnLine: LinePos{0, 0},
 			},
 		},
 	}

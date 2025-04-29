@@ -47,8 +47,8 @@ func keywordCollisionError(declType string, keyword string, language string, pos
 // Checks if keywords collide with type, field or parameter names per given keyword set
 func checkKeywords(types []TypeDecl, keywords []string, language string) error {
 	for _, t := range types {
-		if slices.Contains(keywords, t.name) {
-			return keywordCollisionError("type", t.name, language, t.line)
+		if slices.Contains(keywords, t.typeName) {
+			return keywordCollisionError("type", t.typeName, language, t.line)
 		}
 		// ATP there's no need to check the typename
 		for _, field := range t.fields {
@@ -97,7 +97,7 @@ func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bufio.Writer) 
 		if joiner.join() && js.options.separateDefinitions {
 			writer.WriteString("\n")
 		}
-		writer.WriteString("class " + t.name + " {\n")
+		writer.WriteString("class " + t.typeName + " {\n")
 
 		writeIndent(indent, writer)
 		js.writeConstructor(t.fields, writer)
@@ -121,7 +121,7 @@ func (gen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer) error {
 		if typeJoiner.join() && gen.options.separateDefinitions {
 			writer.WriteString("\n")
 		}
-		writer.WriteString("type " + t.name + " struct {\n")
+		writer.WriteString("type " + t.typeName + " struct {\n")
 
 		gen.writeFields(t.fields, writer)
 		writer.WriteString("}\n")
@@ -145,7 +145,7 @@ func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer) erro
 		if joiner.join() && java.options.separateDefinitions {
 			writer.WriteString("\n")
 		}
-		writer.WriteString("class " + t.name + " {\n")
+		writer.WriteString("class " + t.typeName + " {\n")
 
 		java.writeFields(t.fields, writer)
 		writer.WriteString("\n")
@@ -210,9 +210,9 @@ func (gen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 
 func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 	for _, fn := range typeDecl.methods {
-		receiver := gen.toReceiverName(typeDecl.name)
+		receiver := gen.toReceiverName(typeDecl.typeName)
 
-		funcHeader := "func (" + receiver + " *" + typeDecl.name + ") " + fn.name + "("
+		funcHeader := "func (" + receiver + " *" + typeDecl.typeName + ") " + fn.name + "("
 		writer.WriteString(funcHeader)
 
 		joiner := newJoiner()
@@ -268,7 +268,7 @@ func (java *JavaGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
 	indent := java.options.indent
 	writeIndent(indent, writer)
-	writer.WriteString(t.name + "(")
+	writer.WriteString(t.typeName + "(")
 	join := newJoiner()
 	for _, field := range t.fields {
 		if join.join() {

@@ -89,7 +89,7 @@ func TestSingleCatType(t *testing.T) {
 
 	cat := &parser.structs[0]
 
-	if cat.name != "Cat" {
+	if cat.typeName != "Cat" {
 		t.Errorf("Expected different type name")
 		return
 	}

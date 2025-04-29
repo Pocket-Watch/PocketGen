@@ -16,10 +16,11 @@ type Parser struct {
 }
 
 type TypeDecl struct {
-	line    LinePos
-	name    string
-	fields  []Field
-	methods []FuncDecl
+	line     LinePos
+	typeName string
+	typeLine LinePos
+	fields   []Field
+	methods  []FuncDecl
 }
 
 type FuncDecl struct {
@@ -27,6 +28,7 @@ type FuncDecl struct {
 	name       string
 	fields     []Field
 	returnType string
+	returnLine LinePos
 }
 
 type FieldModifier = uint32
@@ -40,10 +42,23 @@ const (
 )
 
 type Field struct {
-	line      LinePos
 	varName   string
+	varLine   LinePos
 	typeName  string
+	typeLine  LinePos
 	modifiers FieldModifier
+}
+
+func CreateField(varName string, varLine LinePos, typeName string, typeLine LinePos, modifiers FieldModifier) Field {
+	field := Field {
+		varName: varName,
+		varLine: varLine,
+		typeName: typeName,
+		typeLine: typeLine,
+		modifiers: modifiers,
+	}
+
+	return field
 }
 
 func CreateParser(path string) (Parser, bool) {
@@ -184,7 +199,7 @@ func parseTypeField(parser *Parser, field *Field) ParserResult {
 		return parser.expectedToken(TOKEN_IDENTIFIER, token)
 	}
 
-	field.line = token.line
+	field.typeLine = token.line
 	field.typeName = token.tokenValue.string
 
 	token = PeekToken(parser)
@@ -208,20 +223,21 @@ func parseTypeField(parser *Parser, field *Field) ParserResult {
 		return parser.expectedToken(TOKEN_IDENTIFIER, token)
 	}
 
+	field.varLine = token.line
 	field.varName = token.tokenValue.string
 
 	return parserOk()
 }
 
 func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParserResult {
-	token := AdvanceToken(parser)
-	funcDecl.line = token.line
+	AdvanceToken(parser)
 
-	token = AdvanceToken(parser)
+	token := AdvanceToken(parser)
 	if !IsType(token, TOKEN_IDENTIFIER) {
 		return parser.expectedToken(TOKEN_IDENTIFIER, token)
 	}
 
+	funcDecl.line = token.line
 	funcDecl.name = token.tokenValue.string
 
 	token = AdvanceToken(parser)
@@ -257,6 +273,7 @@ func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParserResult {
 
 	token = PeekToken(parser)
 	if IsType(token, TOKEN_IDENTIFIER) {
+		funcDecl.returnLine = token.line
 		funcDecl.returnType = token.tokenValue.string
 		AdvanceToken(parser)
 	}
@@ -273,7 +290,8 @@ func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParserResult {
 		return parser.expectedToken(TOKEN_IDENTIFIER, token)
 	}
 
-	typeDecl.name = token.tokenValue.string
+	typeDecl.typeLine = token.line
+	typeDecl.typeName = token.tokenValue.string
 
 	token = AdvanceToken(parser)
 	if !IsType(token, TOKEN_CURLY_OPEN) {
@@ -349,10 +367,10 @@ func CheckForTypeRedeclarations(parser *Parser, decl TypeDecl, pos int) ParserRe
 			continue
 		}
 
-		if decl.name == otherDecl.name {
-			firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, decl.line.number, decl.line.offset, decl.name)
-			secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, otherDecl.line.number, otherDecl.line.offset, otherDecl.name)
-			message := fmt.Sprintf("ERROR: Type '%s' was declared multiple times:\n%s\n%s\n", decl.name, firstDeclare, secondDeclare)
+		if decl.typeName == otherDecl.typeName {
+			firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, decl.line.number, decl.line.offset, decl.typeName)
+			secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, otherDecl.line.number, otherDecl.line.offset, otherDecl.typeName)
+			message := fmt.Sprintf("ERROR: Type '%s' was declared multiple times:\n%s\n%s\n", decl.typeName, firstDeclare, secondDeclare)
 			result := ParserResult{
 				success: false,
 				message: message,
@@ -372,12 +390,12 @@ func VerifyFieldType(parser *Parser, field *Field) ParserResult {
 	}
 
 	for _, decl := range parser.structs {
-		if decl.name == field.typeName {
+		if decl.typeName == field.typeName {
 			return parserOk()
 		}
 	}
 
-	message := fmt.Sprintf("ERROR @ %s:%v:%v Type of field '%s' was never declared.", parser.filepath, field.line.number, field.line.offset, field.typeName)
+	message := fmt.Sprintf("ERROR @ %s:%v:%v Type of field '%s' was never declared.", parser.filepath, field.typeLine.number, field.typeLine.offset, field.typeName)
 	result := ParserResult{
 		success: false,
 		message: message,
@@ -392,7 +410,7 @@ func VerifyType(parser *Parser, typename string) bool {
 	}
 
 	for _, decl := range parser.structs {
-		if decl.name == typename {
+		if decl.typeName == typename {
 			return true
 		}
 	}
@@ -402,7 +420,7 @@ func VerifyType(parser *Parser, typename string) bool {
 
 func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *FuncDecl) ParserResult {
 	if funcDecl.returnType != "" && !VerifyType(parser, funcDecl.returnType) {
-		message := fmt.Sprintf("ERROR @ %s:%v:%v Return type '%s', of method '%s::%s' is undeclared.", parser.filepath, funcDecl.line.number, funcDecl.line.offset, funcDecl.returnType, parentType.name, funcDecl.name)
+		message := fmt.Sprintf("ERROR @ %s:%v:%v Return type '%s', of method '%s::%s' is undeclared.", parser.filepath, funcDecl.returnLine.number, funcDecl.returnLine.offset, funcDecl.returnType, parentType.typeName, funcDecl.name)
 		result := ParserResult{
 			success: false,
 			message: message,
@@ -434,8 +452,8 @@ func CheckForFieldRedeclarations(parser *Parser, fields []Field, field Field, po
 		}
 
 		if field.varName == otherField.varName {
-			firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, field.line.number, field.line.offset, field.varName)
-			secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, otherField.line.number, otherField.line.offset, otherField.varName)
+			firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, field.varLine.number, field.varLine.offset, field.varName)
+			secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, otherField.varLine.number, otherField.varLine.offset, otherField.varName)
 			message := fmt.Sprintf("ERROR: Field '%s' was declared multiple times:\n%s\n%s\n", field.varName, firstDeclare, secondDeclare)
 			result := ParserResult{
 				success: false,
@@ -451,7 +469,7 @@ func CheckForFieldRedeclarations(parser *Parser, fields []Field, field Field, po
 
 func TypecheckFile(parser *Parser) ParserResult {
 	for i, decl := range parser.structs {
-		if slices.Contains(PRIMITIVES, decl.name) {
+		if slices.Contains(PRIMITIVES, decl.typeName) {
 			return parser.parserErrorMessage(decl.line, "Declared type uses reserved name for type primitives.")
 		}
 
