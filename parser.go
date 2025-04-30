@@ -134,9 +134,16 @@ func (parser *Parser) formatExpectedToken(found Token, format string, args ...an
 	return message
 }
 
-func (parser *Parser) expectedToken(expectedType TokenType, found Token) ParserResult {
-	expectedString := TokenTypeToString(expectedType)
-	message := parser.formatExpectedToken(found, "token %s", expectedString)
+func (parser *Parser) expectedToken(expected Token, found Token) ParserResult {
+	expectedTypeString := TokenTypeToStringPretty(expected.tokenType)
+	expectedValueString := TokenValueToString(expected)
+
+	var message string
+	if expectedValueString != "" {
+		message = parser.formatExpectedToken(found, "%s '%s'", expectedTypeString, expectedValueString)
+	} else {
+		message = parser.formatExpectedToken(found, "%s", expectedTypeString)
+	}
 
 	result := ParserResult{
 		success: false,
@@ -146,15 +153,21 @@ func (parser *Parser) expectedToken(expectedType TokenType, found Token) ParserR
 	return result
 }
 
-func (parser *Parser) expectedKeyword(keywordType KeywordType, found Token) ParserResult {
-	message := parser.formatExpectedToken(found, "keyword '%s'", keywordType)
-
-	result := ParserResult{
-		success: false,
-		message: message,
+func (parser *Parser) expectedTokenType(expectedType TokenType, found Token) ParserResult {
+	expected := Token{
+		tokenType: expectedType,
 	}
 
-	return result
+	return parser.expectedToken(expected, found)
+}
+
+func (parser *Parser) expectedKeyword(keywordType KeywordType, found Token) ParserResult {
+	expected := Token{
+		tokenType:  TOKEN_KEYWORD,
+		tokenValue: TokenValue{string: keywordType},
+	}
+
+	return parser.expectedToken(expected, found)
 }
 
 func (parser *Parser) parserErrorMessage(line LinePos, message string) ParserResult {
@@ -188,7 +201,7 @@ func parseTypeField(parser *Parser, field *Field) ParserResult {
 
 	token = AdvanceToken(parser)
 	if !IsType(token, TOKEN_IDENTIFIER) {
-		return parser.expectedToken(TOKEN_IDENTIFIER, token)
+		return parser.expectedTokenType(TOKEN_IDENTIFIER, token)
 	}
 
 	field.typeLine = token.line
@@ -203,7 +216,7 @@ func parseTypeField(parser *Parser, field *Field) ParserResult {
 	if is_array_type {
 		token = AdvanceToken(parser)
 		if !IsType(token, TOKEN_SQUARE_CLOSE) {
-			return parser.expectedToken(TOKEN_SQUARE_CLOSE, token)
+			return parser.expectedTokenType(TOKEN_SQUARE_CLOSE, token)
 		}
 	}
 
@@ -212,7 +225,7 @@ func parseTypeField(parser *Parser, field *Field) ParserResult {
 	//
 	token = AdvanceToken(parser)
 	if !IsType(token, TOKEN_IDENTIFIER) {
-		return parser.expectedToken(TOKEN_IDENTIFIER, token)
+		return parser.expectedTokenType(TOKEN_IDENTIFIER, token)
 	}
 
 	field.varLine = token.line
@@ -226,7 +239,7 @@ func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParserResult {
 
 	token := AdvanceToken(parser)
 	if !IsType(token, TOKEN_IDENTIFIER) {
-		return parser.expectedToken(TOKEN_IDENTIFIER, token)
+		return parser.expectedTokenType(TOKEN_IDENTIFIER, token)
 	}
 
 	funcDecl.line = token.line
@@ -234,7 +247,7 @@ func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParserResult {
 
 	token = AdvanceToken(parser)
 	if !IsType(token, TOKEN_ROUND_OPEN) {
-		return parser.expectedToken(TOKEN_ROUND_OPEN, token)
+		return parser.expectedTokenType(TOKEN_ROUND_OPEN, token)
 	}
 
 	token = PeekToken(parser)
@@ -259,7 +272,7 @@ func parseFunctionDeclaration(parser *Parser, funcDecl *FuncDecl) ParserResult {
 
 		token := AdvanceToken(parser)
 		if !IsType(token, TOKEN_ROUND_CLOSE) {
-			return parser.expectedToken(TOKEN_ROUND_CLOSE, token)
+			return parser.expectedTokenType(TOKEN_ROUND_CLOSE, token)
 		}
 	}
 
@@ -279,7 +292,7 @@ func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParserResult {
 
 	token = AdvanceToken(parser)
 	if !IsType(token, TOKEN_IDENTIFIER) {
-		return parser.expectedToken(TOKEN_IDENTIFIER, token)
+		return parser.expectedTokenType(TOKEN_IDENTIFIER, token)
 	}
 
 	typeDecl.typeLine = token.line
@@ -287,7 +300,7 @@ func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParserResult {
 
 	token = AdvanceToken(parser)
 	if !IsType(token, TOKEN_CURLY_OPEN) {
-		return parser.expectedToken(TOKEN_CURLY_OPEN, token)
+		return parser.expectedTokenType(TOKEN_CURLY_OPEN, token)
 	}
 
 	token = PeekToken(parser)
@@ -316,7 +329,7 @@ func parseTypeDeclaration(parser *Parser, typeDecl *TypeDecl) ParserResult {
 
 		token = AdvanceToken(parser)
 		if !IsType(token, TOKEN_SEMICOLON) {
-			return parser.expectedToken(TOKEN_SEMICOLON, token)
+			return parser.expectedTokenType(TOKEN_SEMICOLON, token)
 		}
 
 		token = PeekToken(parser)

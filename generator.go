@@ -39,30 +39,33 @@ type JavaGenerator struct {
 	options GeneratorOptions
 }
 
-func keywordCollisionError(declType string, keyword string, language string, pos LinePos) error {
-	return fmt.Errorf("ERROR: %v name '%v' is a %v keyword (line: %v, offset: %v).\n",
-		declType, keyword, language, pos.number, pos.offset)
+func keywordCollisionError(declType string, keyword string, language string, filepath string, pos LinePos) error {
+	return fmt.Errorf("ERROR @ %s:%v:%v %v name '%v' is a %v keyword.\n",
+		filepath, pos.number, pos.offset, declType, keyword, language)
 }
 
 // Checks if keywords collide with type, field or parameter names per given keyword set
-func checkKeywords(types []TypeDecl, keywords []string, language string) error {
+func checkKeywords(types []TypeDecl, keywords []string, language string, filepath string) error {
 	for _, t := range types {
 		if slices.Contains(keywords, t.typeName) {
-			return keywordCollisionError("type", t.typeName, language, t.line)
+			return keywordCollisionError("type", t.typeName, language, filepath, t.typeLine)
 		}
+
 		// ATP there's no need to check the typename
 		for _, field := range t.fields {
 			if slices.Contains(keywords, field.varName) {
-				return keywordCollisionError("field", field.varName, language, t.line)
+				return keywordCollisionError("field", field.varName, language, filepath, field.varLine)
 			}
 		}
+
 		for _, fn := range t.methods {
 			if slices.Contains(keywords, fn.name) {
-				return keywordCollisionError("method", fn.name, language, t.line)
+				return keywordCollisionError("method", fn.name, language, filepath, fn.line)
 			}
+
 			for _, f := range fn.fields {
 				if slices.Contains(keywords, f.varName) {
-					return keywordCollisionError("parameter", f.varName, language, t.line)
+					return keywordCollisionError("parameter", f.varName, language, filepath, f.varLine)
 				}
 			}
 		}
@@ -107,8 +110,8 @@ func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bufio.Writer) 
 }
 
 // Writes Go definitions based on type declarations
-func (gen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer) error {
-	err := checkKeywords(types, GO_KEYWORDS, "go")
+func (gen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+	err := checkKeywords(types, GO_KEYWORDS, "go", filepath)
 	if err != nil {
 		return err
 	}
@@ -132,8 +135,8 @@ func (gen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer) error {
 }
 
 // Writes Java definitions based on type declarations
-func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer) error {
-	err := checkKeywords(types, JAVA_KEYWORDS, "java")
+func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+	err := checkKeywords(types, JAVA_KEYWORDS, "java", filepath)
 	if err != nil {
 		return err
 	}

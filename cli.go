@@ -98,14 +98,14 @@ func executeCLI() {
 			js.generate(parser.structs, writer)
 		case GO:
 			goGen := GoGenerator{defaultOptions()}
-			err = goGen.generate(parser.structs, writer)
+			err = goGen.generate(parser.structs, writer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case JAVA:
 			java := JavaGenerator{defaultOptions()}
-			err = java.generate(parser.structs, writer)
+			err = java.generate(parser.structs, writer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
