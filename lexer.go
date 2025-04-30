@@ -40,12 +40,12 @@ var TOKEN_LOOKUP = []TokenAsString{
 	{"TOKEN_COMMA", "comma", ","},
 	{"TOKEN_SEMICOLON", "semicolon", ";"},
 	{"TOKEN_NULLABLE", "nullable", "?"},
-	{"TOKEN_CURLY_OPEN", "curly open", "{"},
-	{"TOKEN_CURLY_CLOSE", "curly close", "}"},
-	{"TOKEN_ROUND_OPEN", "round open", "("},
-	{"TOKEN_ROUND_CLOSE", "round close", ")"},
-	{"TOKEN_SQUARE_OPEN", "square open", "["},
-	{"TOKEN_SQUARE_CLOSE", "square close", "]"},
+	{"TOKEN_CURLY_OPEN", "open brace", "{"},
+	{"TOKEN_CURLY_CLOSE", "close brace", "}"},
+	{"TOKEN_ROUND_OPEN", "open parentheses", "("},
+	{"TOKEN_ROUND_CLOSE", "close parentheses", ")"},
+	{"TOKEN_SQUARE_OPEN", "open bracket", "["},
+	{"TOKEN_SQUARE_CLOSE", "close bracket", "]"},
 }
 
 func TokenTypeToString(tokenType TokenType) string {
