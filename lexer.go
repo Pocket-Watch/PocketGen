@@ -26,6 +26,59 @@ const (
 	TOKEN_SQUARE_CLOSE
 )
 
+type TokenAsString struct {
+	exactType  string
+	prettyType string
+	value      string
+}
+
+var TOKEN_LOOKUP = []TokenAsString{
+	{"TOKEN_EOF", "eof", "end of file"},
+	{"TOKEN_ERROR", "error", "error"},
+	{"TOKEN_KEYWORD", "keyword", "keyword"},
+	{"TOKEN_IDENTIFIER", "identifier", "identifier"},
+	{"TOKEN_COMMA", "comma", ","},
+	{"TOKEN_SEMICOLON", "semicolon", ";"},
+	{"TOKEN_NULLABLE", "nullable", "?"},
+	{"TOKEN_CURLY_OPEN", "curly open", "{"},
+	{"TOKEN_CURLY_CLOSE", "curly close", "}"},
+	{"TOKEN_ROUND_OPEN", "round open", "("},
+	{"TOKEN_ROUND_CLOSE", "round close", ")"},
+	{"TOKEN_SQUARE_OPEN", "square open", "["},
+	{"TOKEN_SQUARE_CLOSE", "square close", "]"},
+}
+
+func TokenTypeToString(tokenType TokenType) string {
+	if tokenType < 0 || tokenType >= len(TOKEN_LOOKUP) {
+		return "TOKEN_UNKNOWN"
+	}
+
+	return TOKEN_LOOKUP[tokenType].exactType
+}
+
+func TokenTypeToStringPretty(tokenType TokenType) string {
+	if tokenType < 0 || tokenType >= len(TOKEN_LOOKUP) {
+		return "unknown"
+	}
+
+	return TOKEN_LOOKUP[tokenType].prettyType
+}
+
+func TokenValueToString(token Token) string {
+	tokenType := token.tokenType
+	if tokenType < 0 || tokenType >= len(TOKEN_LOOKUP) {
+		return "unknown"
+	}
+
+	switch tokenType {
+	case TOKEN_KEYWORD, TOKEN_IDENTIFIER:
+		return token.tokenValue.string
+
+	default:
+		return TOKEN_LOOKUP[tokenType].value
+	}
+}
+
 type TokenErrorType = int
 
 const (
@@ -43,6 +96,12 @@ const (
 	KEYWORD_FUNC  KeywordType = "func"
 )
 
+var KEYWORD_LOOKUP = []string{
+	"type",
+	"const",
+	"func",
+}
+
 var KEYWORDS = []KeywordType{KEYWORD_TYPE, KEYWORD_CONST, KEYWORD_FUNC}
 
 var PRIMITIVES = []string{
@@ -58,7 +117,7 @@ type TokenValue struct {
 	int    int
 }
 
-type Token struct { 
+type Token struct {
 	line       LinePos
 	tokenType  TokenType
 	tokenValue TokenValue
@@ -293,121 +352,17 @@ var nextToken = func(lexer *Lexer) Token {
 }
 
 func TokenToString(token Token) string {
-	var name string
-	var value string
-
-	switch token.tokenType {
-	case TOKEN_EOF:
-		name = "EOF"
-		value = "end of file"
-
-	case TOKEN_ERROR:
-		name = "ERROR"
-		value = fmt.Sprintf("%v", token.tokenValue.int)
-
-	case TOKEN_KEYWORD:
-		name = "KEYWORD"
-		value = fmt.Sprintf("%v", token.tokenValue.string)
-
-	case TOKEN_IDENTIFIER:
-		name = "IDENTIFIER"
-		value = fmt.Sprintf("'%v'", token.tokenValue.string)
-
-	case TOKEN_COMMA:
-		name = "COMMA"
-		value = ","
-
-	case TOKEN_SEMICOLON:
-		name = "SEMICOLON"
-		value = ";"
-
-	case TOKEN_NULLABLE:
-		name = "NULLABLE"
-		value = "?"
-
-	case TOKEN_CURLY_OPEN:
-		name = "CURLY OPEN"
-		value = "{"
-
-	case TOKEN_CURLY_CLOSE:
-		name = "CURLY CLOSE"
-		value = "}"
-
-	case TOKEN_ROUND_OPEN:
-		name = "ROUND OPEN"
-		value = "("
-
-	case TOKEN_ROUND_CLOSE:
-		name = "ROUND CLOSE"
-		value = ")"
-
-	case TOKEN_SQUARE_OPEN:
-		name = "SQUARE OPEN"
-		value = "["
-
-	case TOKEN_SQUARE_CLOSE:
-		name = "SQUARE CLOSE"
-		value = "]"
-
-	default:
-		name = "<UNKNOWN TOKEN>"
-		value = fmt.Sprintf("%v", token.tokenType)
-	}
+	typeString := TokenTypeToString(token.tokenType)
+	valueString := TokenValueToString(token)
 
 	line := fmt.Sprintf("%v:%v ", token.line.number, token.line.offset)
-	string := fmt.Sprintf("%-14s %-6s - %s", name, line, value)
+	string := fmt.Sprintf("%-14s %-6s - %s", typeString, line, valueString)
 	return string
 }
 
 func PrintToken(token Token) {
 	tokenString := TokenToString(token)
 	fmt.Printf("%v\n", tokenString)
-}
-
-func TokenTypeToString(tokenType TokenType) string {
-	switch tokenType {
-	case TOKEN_EOF:
-		return "TOKEN_EOF"
-
-	case TOKEN_ERROR:
-		return "TOKEN_ERROR"
-
-	case TOKEN_KEYWORD:
-		return "TOKEN_KEYWORD"
-
-	case TOKEN_IDENTIFIER:
-		return "TOKEN_IDENTIFIER"
-
-	case TOKEN_COMMA:
-		return "TOKEN_COMMA"
-
-	case TOKEN_SEMICOLON:
-		return "TOKEN_SEMICOLON"
-
-	case TOKEN_NULLABLE:
-		return "TOKEN_NULLABLE"
-
-	case TOKEN_CURLY_OPEN:
-		return "TOKEN_CURLY_OPEN"
-
-	case TOKEN_CURLY_CLOSE:
-		return "TOKEN_CURLY_CLOSE"
-
-	case TOKEN_ROUND_OPEN:
-		return "TOKEN_ROUND_OPEN"
-
-	case TOKEN_ROUND_CLOSE:
-		return "TOKEN_ROUND_CLOSE"
-
-	case TOKEN_SQUARE_OPEN:
-		return "TOKEN_SQUARE_OPEN"
-
-	case TOKEN_SQUARE_CLOSE:
-		return "TOKEN_SQUARE_CLOSE"
-
-	default:
-		return "TOKEN_UNKNOWN"
-	}
 }
 
 func GenerateTestTokens(data []byte) {
@@ -426,7 +381,6 @@ func GenerateTestTokens(data []byte) {
 	}
 	fmt.Println(")")
 }
-
 
 func RunLexerScratch(path string) {
 	data, err := os.ReadFile(path)

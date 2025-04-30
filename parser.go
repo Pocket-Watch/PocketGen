@@ -50,11 +50,11 @@ type Field struct {
 }
 
 func CreateField(varName string, varLine LinePos, typeName string, typeLine LinePos, modifiers FieldModifier) Field {
-	field := Field {
-		varName: varName,
-		varLine: varLine,
-		typeName: typeName,
-		typeLine: typeLine,
+	field := Field{
+		varName:   varName,
+		varLine:   varLine,
+		typeName:  typeName,
+		typeLine:  typeLine,
 		modifiers: modifiers,
 	}
 
@@ -123,17 +123,9 @@ func parserOk() ParserResult {
 }
 
 func (parser *Parser) formatExpectedToken(found Token, format string, args ...any) string {
-	var foundString string
+	// TODO(kihau): Also handle lexer errors (error tokens).
 
-	switch found.tokenType {
-	case TOKEN_KEYWORD:
-		foundString = fmt.Sprintf("keyword '%s'", found.tokenValue.string)
-	case TOKEN_IDENTIFIER:
-		foundString = fmt.Sprintf("identifier '%s'", found.tokenValue.string)
-	default:
-		foundString = fmt.Sprintf("token '%s'", TokenTypeToString(found.tokenType))
-	}
-
+	foundString := fmt.Sprintf("%v '%s'", TokenTypeToStringPretty(found.tokenType), TokenValueToString(found))
 	expectedString := fmt.Sprintf(format, args...)
 
 	line := found.line

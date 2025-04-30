@@ -19,8 +19,6 @@ package main
 //
 //   varDecl := identifier ( "[" "]" ) identifier
 
-
-
 func main() {
 	executeCLI()
 }
