@@ -431,7 +431,12 @@ func (rust *RustGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer)
 
 // This
 func (goGen *GoGenerator) toReceiverName(name string) string {
-	receiver := strings.ToLower(string(name[0])) + name[1:]
+	firstByte := name[0]
+	if (firstByte < 'A' || firstByte > 'Z') && (firstByte < 'a' || firstByte > 'z') {
+		// Let's only use ASCII letters for receivers
+		return goGen.options.receiverNameFallback
+	}
+	receiver := strings.ToLower(string(firstByte)) + name[1:]
 	if slices.Contains(GO_KEYWORDS, receiver) {
 		// Generic receiver to prevent collisions with keywords
 		return goGen.options.receiverNameFallback

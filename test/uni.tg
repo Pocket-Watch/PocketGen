@@ -1,0 +1,9 @@
+type Σ {
+    const string brÅnd;
+    u32 house字;
+    func typeCharacters([char] characters, Σ Σ) string;
+}
+
+type G {
+    func do();
+}
