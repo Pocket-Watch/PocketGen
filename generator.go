@@ -321,6 +321,9 @@ func (kotlin *KotlinGenerator) writeMethodArgument(field Field, writer *bufio.Wr
 		writer.WriteString("List<")
 	}
 	writer.WriteString(field.typeName)
+	if field.hasModifier(FIELD_NULLABLE) {
+		writer.WriteString("?")
+	}
 
 	if isList {
 		writer.WriteString(">")
@@ -344,7 +347,7 @@ func (rust *RustGenerator) writeFieldType(field Field, writer *bufio.Writer) {
 		writer.WriteString("Vec<")
 	}
 	writer.WriteString(field.typeName)
-	if field.hasModifier(FIELD_ARRAY) {
+	if field.hasModifier(FIELD_NULLABLE) {
 		writer.WriteString("?")
 	}
 	if isList {
