@@ -39,6 +39,10 @@ type JavaGenerator struct {
 	options GeneratorOptions
 }
 
+type RustGenerator struct {
+	options GeneratorOptions
+}
+
 func keywordCollisionError(declType string, keyword string, language string, filepath string, pos LinePos) error {
 	return fmt.Errorf("ERROR @ %s:%v:%v %v name '%v' is a %v keyword.\n",
 		filepath, pos.number, pos.offset, declType, keyword, language)
@@ -143,7 +147,7 @@ func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer, file
 	translateTypes(types, toJavaType)
 
 	joiner := newJoiner()
-	// May require specifying package name
+	// May require specifying mod name
 	for _, t := range types {
 		if joiner.join() && java.options.separateDefinitions {
 			writer.WriteString("\n")
@@ -151,10 +155,40 @@ func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer, file
 		writer.WriteString("class " + t.typeName + " {\n")
 
 		java.writeFields(t.fields, writer)
-		writer.WriteString("\n")
+		if len(t.fields) > 0 {
+			writer.WriteString("\n")
+		}
 		java.writeConstructor(t, writer)
 		java.writeMethods(t, writer)
 		writer.WriteString("}\n")
+	}
+	writer.Flush()
+	return nil
+}
+
+// Writes Rust definitions based on type declarations
+func (rust *RustGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+	err := checkKeywords(types, RUST_KEYWORDS, "rust", filepath)
+	if err != nil {
+		return err
+	}
+	translateTypes(types, toRustType)
+
+	joiner := newJoiner()
+	// May require specifying package name
+	for _, t := range types {
+		if joiner.join() && rust.options.separateDefinitions {
+			writer.WriteString("\n")
+		}
+		writer.WriteString("struct " + t.typeName + " {\n")
+		rust.writeFields(t.fields, writer)
+		writer.WriteString("}\n")
+
+		if len(t.methods) > 0 {
+			writer.WriteString("impl " + t.typeName + " {\n")
+			rust.writeMethods(t, writer)
+			writer.WriteString("}\n")
+		}
 	}
 	writer.Flush()
 	return nil
@@ -211,6 +245,28 @@ func (gen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 	}
 }
 
+func (rust *RustGenerator) writeFields(fields []Field, writer *bufio.Writer) {
+	indent := rust.options.indent
+	for _, field := range fields {
+		writeIndent(indent, writer)
+		writer.WriteString(field.varName + ": ")
+		rust.writeFieldType(field, writer)
+		// Trailing comma is probably fine
+		writer.WriteString(",\n")
+	}
+}
+
+func (rust *RustGenerator) writeFieldType(field Field, writer *bufio.Writer) {
+	isList := field.hasModifier(FIELD_ARRAY)
+	if isList {
+		writer.WriteString("Vec<")
+	}
+	writer.WriteString(field.typeName)
+	if isList {
+		writer.WriteString(">")
+	}
+}
+
 func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 	for _, fn := range typeDecl.methods {
 		receiver := gen.toReceiverName(typeDecl.typeName)
@@ -233,7 +289,28 @@ func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 		writeIndent(gen.options.indent, writer)
 		writer.WriteString("panic(\"TODO: Unimplemented method\")\n}\n")
 	}
-	writer.WriteString("\n")
+}
+
+func (rust *RustGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+	indent := rust.options.indent
+	for _, fn := range typeDecl.methods {
+		writeIndent(indent, writer)
+		writer.WriteString("fn " + fn.name + "(&self")
+
+		for _, field := range fn.fields {
+			writer.WriteString(", ")
+			writer.WriteString(field.varName + ": " + field.typeName)
+		}
+		writer.WriteString(") ")
+		if fn.returnType != "" {
+			writer.WriteString("-> " + fn.returnType + " ")
+		}
+		writer.WriteString("{\n")
+		writeIndent(2*indent, writer)
+		writer.WriteString("panic!(\"TODO: Unimplemented method\")\n")
+		writeIndent(indent, writer)
+		writer.WriteString("}\n")
+	}
 }
 
 // This
@@ -415,6 +492,15 @@ func toJavaType(typeName string) string {
 		return "char"
 	case "bool":
 		return "boolean"
+	default:
+		return typeName
+	}
+}
+
+func toRustType(typeName string) string {
+	switch typeName {
+	case "string":
+		return "String"
 	default:
 		return typeName
 	}
