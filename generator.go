@@ -114,25 +114,25 @@ func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bufio.Writer) 
 }
 
 // Writes Go definitions based on type declarations
-func (gen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+func (goGen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
 	err := checkKeywords(types, GO_KEYWORDS, "go", filepath)
 	if err != nil {
 		return err
 	}
 	translateTypes(types, toGoType)
 
-	writer.WriteString("package " + gen.options.packageName + "\n\n")
+	writer.WriteString("package " + goGen.options.packageName + "\n\n")
 
 	typeJoiner := newJoiner()
 	for _, t := range types {
-		if typeJoiner.join() && gen.options.separateDefinitions {
+		if typeJoiner.join() && goGen.options.separateDefinitions {
 			writer.WriteString("\n")
 		}
 		writer.WriteString("type " + t.typeName + " struct {\n")
 
-		gen.writeFields(t.fields, writer)
+		goGen.writeFields(t.fields, writer)
 		writer.WriteString("}\n")
-		gen.writeMethods(t, writer)
+		goGen.writeMethods(t, writer)
 	}
 	writer.Flush()
 	return nil
@@ -147,7 +147,7 @@ func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer, file
 	translateTypes(types, toJavaType)
 
 	joiner := newJoiner()
-	// May require specifying mod name
+	// May require specifying package name
 	for _, t := range types {
 		if joiner.join() && java.options.separateDefinitions {
 			writer.WriteString("\n")
@@ -175,7 +175,7 @@ func (rust *RustGenerator) generate(types []TypeDecl, writer *bufio.Writer, file
 	translateTypes(types, toRustType)
 
 	joiner := newJoiner()
-	// May require specifying package name
+	// May require specifying mod name
 	for _, t := range types {
 		if joiner.join() && rust.options.separateDefinitions {
 			writer.WriteString("\n")
@@ -233,16 +233,29 @@ func (js *JavascriptGenerator) writeConstructor(fields []Field, writer *bufio.Wr
 	writer.WriteString("}\n")
 }
 
-func (gen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
-	indent := gen.options.indent
+func (goGen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
+	indent := goGen.options.indent
 	for _, field := range fields {
 		writeIndent(indent, writer)
-		writer.WriteString(field.varName + " ")
-		if field.hasModifier(FIELD_ARRAY) {
-			writer.WriteString("[]")
-		}
-		writer.WriteString(field.typeName + "\n")
+		goGen.writeField(field, writer)
+		writer.WriteString("\n")
 	}
+}
+
+func (goGen *GoGenerator) writeField(field Field, writer *bufio.Writer) {
+	writer.WriteString(field.varName + " ")
+	if field.hasModifier(FIELD_ARRAY) {
+		writer.WriteString("[]")
+	}
+	writer.WriteString(field.typeName)
+}
+
+func (java *JavaGenerator) writeField(field Field, writer *bufio.Writer) {
+	writer.WriteString(field.typeName)
+	if field.hasModifier(FIELD_ARRAY) {
+		writer.WriteString("[]")
+	}
+	writer.WriteString(" " + field.varName)
 }
 
 func (rust *RustGenerator) writeFields(fields []Field, writer *bufio.Writer) {
@@ -267,9 +280,9 @@ func (rust *RustGenerator) writeFieldType(field Field, writer *bufio.Writer) {
 	}
 }
 
-func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+func (goGen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 	for _, fn := range typeDecl.methods {
-		receiver := gen.toReceiverName(typeDecl.typeName)
+		receiver := goGen.toReceiverName(typeDecl.typeName)
 
 		funcHeader := "func (" + receiver + " *" + typeDecl.typeName + ") " + fn.name + "("
 		writer.WriteString(funcHeader)
@@ -279,14 +292,14 @@ func (gen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
 			if joiner.join() {
 				writer.WriteString(", ")
 			}
-			writer.WriteString(field.varName + " " + field.typeName)
+			goGen.writeField(field, writer)
 		}
 		writer.WriteString(") ")
 		if fn.returnType != "" {
 			writer.WriteString(fn.returnType + " ")
 		}
 		writer.WriteString("{\n")
-		writeIndent(gen.options.indent, writer)
+		writeIndent(goGen.options.indent, writer)
 		writer.WriteString("panic(\"TODO: Unimplemented method\")\n}\n")
 	}
 }
@@ -299,10 +312,12 @@ func (rust *RustGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer)
 
 		for _, field := range fn.fields {
 			writer.WriteString(", ")
-			writer.WriteString(field.varName + ": " + field.typeName)
+			writer.WriteString(field.varName + ": ")
+			rust.writeFieldType(field, writer)
 		}
 		writer.WriteString(") ")
 		if fn.returnType != "" {
+			// For now it's not possible to return lists
 			writer.WriteString("-> " + fn.returnType + " ")
 		}
 		writer.WriteString("{\n")
@@ -314,11 +329,11 @@ func (rust *RustGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer)
 }
 
 // This
-func (gen *GoGenerator) toReceiverName(name string) string {
+func (goGen *GoGenerator) toReceiverName(name string) string {
 	receiver := strings.ToLower(string(name[0])) + name[1:]
 	if slices.Contains(GO_KEYWORDS, receiver) {
 		// Generic receiver to prevent collisions with keywords
-		return gen.options.receiverNameFallback
+		return goGen.options.receiverNameFallback
 	}
 	return receiver
 }
@@ -354,11 +369,7 @@ func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
 		if join.join() {
 			writer.WriteString(", ")
 		}
-		writer.WriteString(field.typeName)
-		if field.hasModifier(FIELD_ARRAY) {
-			writer.WriteString("[]")
-		}
-		writer.WriteString(" " + field.varName)
+		java.writeField(field, writer)
 	}
 	writer.WriteString(") {\n")
 	for _, field := range t.fields {
@@ -383,11 +394,7 @@ func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer)
 			if fieldJoiner.join() {
 				writer.WriteString(", ")
 			}
-			writer.WriteString(field.typeName)
-			if field.hasModifier(FIELD_ARRAY) {
-				writer.WriteString("[]")
-			}
-			writer.WriteString(" " + field.varName)
+			java.writeField(field, writer)
 		}
 		writer.WriteString(") {\n")
 		writeIndent(2*indent, writer)

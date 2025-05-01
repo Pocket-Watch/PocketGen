@@ -1,18 +1,19 @@
 type Car {
     #Numbers
-    u32 yearProduced; u32 hp; u16 doors;
+    u32 yearProduced; u16 doors;
     #Details
     const Details details;
 
-    func drive() ;
-    func break() i64;
+    func drive(u16 speed) ;
+    func breakCar() i64;
 }
 
 type Details {
     const string brand;
     #Numbers
     u64 mileage; i8 gears; f64 fuelConsumption;
+    u32 hp;
     [string] features;
-
+    func concatenate([string] elements) string;
     func display() string;
 }

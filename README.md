@@ -5,6 +5,7 @@ Language code meta generator
 - Java
 - Go
 - JavaScript
+- Rust
 
 ## Language constructs
 ### Keywords
