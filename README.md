@@ -50,4 +50,4 @@ char
 Source the syntax file with the editor command: 
 `:so res/pocketgen.vim`
 
-You can also source it automatically by add it to your `vim.rc`/`init.lua`.
+You can also source it automatically by adding it to your `vim.rc`/`init.lua`.

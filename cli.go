@@ -110,6 +110,13 @@ func executeCLI() {
 				fmt.Println(err)
 				os.Exit(1)
 			}
+		case KOTLIN:
+			kotlin := KotlinGenerator{defaultOptions()}
+			err = kotlin.generate(parser.structs, writer, parser.filepath)
+			if err != nil {
+				fmt.Println(err)
+				os.Exit(1)
+			}
 		case RUST:
 			rust := RustGenerator{defaultOptions()}
 			err = rust.generate(parser.structs, writer, parser.filepath)

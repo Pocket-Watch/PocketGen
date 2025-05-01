@@ -39,6 +39,10 @@ type JavaGenerator struct {
 	options GeneratorOptions
 }
 
+type KotlinGenerator struct {
+	options GeneratorOptions
+}
+
 type RustGenerator struct {
 	options GeneratorOptions
 }
@@ -166,6 +170,40 @@ func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer, file
 	return nil
 }
 
+// Writes Kotlin definitions based on type declarations
+func (kotlin *KotlinGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+	err := checkKeywords(types, KOTLIN_KEYWORDS, "kotlin", filepath)
+	if err != nil {
+		return err
+	}
+	translateTypes(types, toKotlinType)
+
+	joiner := newJoiner()
+	// May require specifying package name
+	for _, t := range types {
+		if joiner.join() && kotlin.options.separateDefinitions {
+			writer.WriteString("\n")
+		}
+		// Data classes cannot be empty
+		if len(t.fields) > 0 {
+			writer.WriteString("data ")
+		}
+		writer.WriteString("class " + t.typeName)
+
+		if len(t.fields) > 0 {
+			kotlin.writeConstructor(t, writer)
+		}
+
+		if len(t.methods) > 0 {
+			writer.WriteString(" {\n")
+			kotlin.writeMethods(t, writer)
+			writer.WriteString("}\n")
+		}
+	}
+	writer.Flush()
+	return nil
+}
+
 // Writes Rust definitions based on type declarations
 func (rust *RustGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
 	err := checkKeywords(types, RUST_KEYWORDS, "rust", filepath)
@@ -258,6 +296,37 @@ func (java *JavaGenerator) writeField(field Field, writer *bufio.Writer) {
 	writer.WriteString(" " + field.varName)
 }
 
+func (kotlin *KotlinGenerator) writeField(field Field, writer *bufio.Writer) {
+	if field.hasModifier(FIELD_CONST) {
+		writer.WriteString("val ")
+	} else {
+		writer.WriteString("var ")
+	}
+	writer.WriteString(field.varName + ": ")
+	isList := field.hasModifier(FIELD_ARRAY)
+	if isList {
+		writer.WriteString("List<")
+	}
+	writer.WriteString(field.typeName)
+
+	if isList {
+		writer.WriteString(">")
+	}
+}
+
+func (kotlin *KotlinGenerator) writeMethodArgument(field Field, writer *bufio.Writer) {
+	writer.WriteString(field.varName + ": ")
+	isList := field.hasModifier(FIELD_ARRAY)
+	if isList {
+		writer.WriteString("List<")
+	}
+	writer.WriteString(field.typeName)
+
+	if isList {
+		writer.WriteString(">")
+	}
+}
+
 func (rust *RustGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 	indent := rust.options.indent
 	for _, field := range fields {
@@ -275,6 +344,9 @@ func (rust *RustGenerator) writeFieldType(field Field, writer *bufio.Writer) {
 		writer.WriteString("Vec<")
 	}
 	writer.WriteString(field.typeName)
+	if field.hasModifier(FIELD_ARRAY) {
+		writer.WriteString("?")
+	}
 	if isList {
 		writer.WriteString(">")
 	}
@@ -301,6 +373,32 @@ func (goGen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) 
 		writer.WriteString("{\n")
 		writeIndent(goGen.options.indent, writer)
 		writer.WriteString("panic(\"TODO: Unimplemented method\")\n}\n")
+	}
+}
+
+func (kotlin *KotlinGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+	indent := kotlin.options.indent
+	for _, fn := range typeDecl.methods {
+		writeIndent(indent, writer)
+		writer.WriteString("fun " + fn.name + "(")
+
+		joiner := newJoiner()
+		for _, field := range fn.fields {
+			if joiner.join() {
+				writer.WriteString(", ")
+			}
+			kotlin.writeMethodArgument(field, writer)
+		}
+		writer.WriteString(")")
+		if fn.returnType != "" {
+			// For now it's not possible to return lists
+			writer.WriteString(": " + fn.returnType)
+		}
+		writer.WriteString(" {\n")
+		writeIndent(2*indent, writer)
+		writer.WriteString("throw RuntimeException(\"TODO: Unimplemented method\")\n")
+		writeIndent(indent, writer)
+		writer.WriteString("}\n")
 	}
 }
 
@@ -380,6 +478,20 @@ func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
 	}
 	writeIndent(indent, writer)
 	writer.WriteString("}\n")
+}
+
+func (kotlin *KotlinGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
+	indent := kotlin.options.indent
+	writer.WriteString("(\n")
+	join := newJoiner()
+	for _, field := range t.fields {
+		if join.join() {
+			writer.WriteString(",\n")
+		}
+		writeIndent(indent, writer)
+		kotlin.writeField(field, writer)
+	}
+	writer.WriteString("\n)")
 }
 
 func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
@@ -504,6 +616,31 @@ func toJavaType(typeName string) string {
 	}
 }
 
+func toKotlinType(typeName string) string {
+	switch typeName {
+	case "i8", "u8":
+		return "Byte"
+	case "i16", "u16":
+		return "Short"
+	case "i32", "u32":
+		return "Int"
+	case "i64", "u64":
+		return "Long"
+	case "f32":
+		return "Float"
+	case "f64":
+		return "Double"
+	case "string":
+		return "String"
+	case "char":
+		return "Char"
+	case "bool":
+		return "Boolean"
+	default:
+		return typeName
+	}
+}
+
 func toRustType(typeName string) string {
 	switch typeName {
 	case "string":
@@ -541,4 +678,18 @@ var RUST_KEYWORDS = []string{
 	"fn", "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut",
 	"pub", "ref", "return", "self", "Self", "static", "struct", "super", "trait",
 	"true", "type", "unsafe", "use", "where", "while", "async", "await", "dyn",
+}
+
+var KOTLIN_KEYWORDS = []string{
+	"abstract", "annotation", "as", "break", "class",
+	"companion", "continue", "crossinline", "data", "do",
+	"dynamic", "else", "enum", "external", "false",
+	"final", "finally", "for", "fun", "if",
+	"import", "in", "inline", "internal", "is",
+	"lateinit", "native", "new", "null", "object",
+	"open", "operator", "or", "package", "protected",
+	"public", "reified", "return", "sealed", "super",
+	"suspend", "this", "throw", "trait", "true",
+	"typealias", "typeof", "val", "var", "when",
+	"while", "with", "where", "by", "get", "set", "it",
 }
