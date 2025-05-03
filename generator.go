@@ -308,6 +308,9 @@ func (kotlin *KotlinGenerator) writeField(field Field, writer *bufio.Writer) {
 		writer.WriteString("List<")
 	}
 	writer.WriteString(field.typeName)
+	if field.hasModifier(FIELD_NULLABLE) {
+		writer.WriteString("?")
+	}
 
 	if isList {
 		writer.WriteString(">")
