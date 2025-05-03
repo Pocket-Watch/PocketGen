@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/fs"
 	"os"
@@ -84,42 +85,36 @@ func executeCLI() {
 			os.Exit(1)
 		}
 
-		// cat.tg -> cat.js
-		newExtension := languageToExtension(language)
-		generatedFile := changeExtension(file, newExtension)
-		writer := openWriter(generatedFile)
-		if writer == nil {
-			os.Exit(1)
-		}
+		codeBuffer := bytes.Buffer{}
 
 		switch language {
 		case JAVASCRIPT:
 			js := JavascriptGenerator{defaultOptions()}
-			js.generate(parser.structs, writer)
+			js.generate(parser.structs, &codeBuffer)
 		case GO:
 			goGen := GoGenerator{defaultOptions()}
-			err = goGen.generate(parser.structs, writer, parser.filepath)
+			err = goGen.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case JAVA:
 			java := JavaGenerator{defaultOptions()}
-			err = java.generate(parser.structs, writer, parser.filepath)
+			err = java.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case KOTLIN:
 			kotlin := KotlinGenerator{defaultOptions()}
-			err = kotlin.generate(parser.structs, writer, parser.filepath)
+			err = kotlin.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case RUST:
 			rust := RustGenerator{defaultOptions()}
-			err = rust.generate(parser.structs, writer, parser.filepath)
+			err = rust.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
@@ -128,6 +123,20 @@ func executeCLI() {
 			fmt.Println("Unsupported language (coming soon).")
 			os.Exit(1)
 		}
+
+		// cat.tg -> cat.js
+		newExtension := languageToExtension(language)
+		generatedFile := changeExtension(file, newExtension)
+		writer := openWriter(generatedFile)
+		if writer == nil {
+			os.Exit(1)
+		}
+		_, writeErr := writer.Write(codeBuffer.Bytes())
+		if writeErr != nil {
+			fmt.Println("ERROR writing contents to file:", writeErr)
+			os.Exit(1)
+		}
+		writer.Flush()
 	}
 	end := time.Now()
 	timeElapsed := end.Sub(start)

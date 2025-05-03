@@ -2,13 +2,12 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
 	"slices"
 	"strings"
 )
-
-// How to handle every Write since they can return errors at any point?
 
 type GeneratorOptions struct {
 	indent               int
@@ -101,7 +100,7 @@ func translateTypes(types []TypeDecl, convert func(s string) string) {
 }
 
 // Writes Javascript definitions based on type declarations
-func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bufio.Writer) {
+func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bytes.Buffer) {
 	indent := js.options.indent
 	joiner := newJoiner()
 	for _, t := range types {
@@ -114,11 +113,10 @@ func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bufio.Writer) 
 		js.writeConstructor(t.fields, writer)
 		js.writeMethods(t.methods, writer)
 	}
-	writer.Flush()
 }
 
 // Writes Go definitions based on type declarations
-func (goGen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+func (goGen *GoGenerator) generate(types []TypeDecl, writer *bytes.Buffer, filepath string) error {
 	err := checkKeywords(types, GO_KEYWORDS, "go", filepath)
 	if err != nil {
 		return err
@@ -138,12 +136,11 @@ func (goGen *GoGenerator) generate(types []TypeDecl, writer *bufio.Writer, filep
 		writer.WriteString("}\n")
 		goGen.writeMethods(t, writer)
 	}
-	writer.Flush()
 	return nil
 }
 
 // Writes Java definitions based on type declarations
-func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+func (java *JavaGenerator) generate(types []TypeDecl, writer *bytes.Buffer, filepath string) error {
 	err := checkKeywords(types, JAVA_KEYWORDS, "java", filepath)
 	if err != nil {
 		return err
@@ -166,12 +163,11 @@ func (java *JavaGenerator) generate(types []TypeDecl, writer *bufio.Writer, file
 		java.writeMethods(t, writer)
 		writer.WriteString("}\n")
 	}
-	writer.Flush()
 	return nil
 }
 
 // Writes Kotlin definitions based on type declarations
-func (kotlin *KotlinGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+func (kotlin *KotlinGenerator) generate(types []TypeDecl, writer *bytes.Buffer, filepath string) error {
 	err := checkKeywords(types, KOTLIN_KEYWORDS, "kotlin", filepath)
 	if err != nil {
 		return err
@@ -200,12 +196,11 @@ func (kotlin *KotlinGenerator) generate(types []TypeDecl, writer *bufio.Writer, 
 			writer.WriteString("}\n")
 		}
 	}
-	writer.Flush()
 	return nil
 }
 
 // Writes Rust definitions based on type declarations
-func (rust *RustGenerator) generate(types []TypeDecl, writer *bufio.Writer, filepath string) error {
+func (rust *RustGenerator) generate(types []TypeDecl, writer *bytes.Buffer, filepath string) error {
 	err := checkKeywords(types, RUST_KEYWORDS, "rust", filepath)
 	if err != nil {
 		return err
@@ -228,11 +223,10 @@ func (rust *RustGenerator) generate(types []TypeDecl, writer *bufio.Writer, file
 			writer.WriteString("}\n")
 		}
 	}
-	writer.Flush()
 	return nil
 }
 
-func (js *JavascriptGenerator) writeMethods(methods []FuncDecl, writer *bufio.Writer) {
+func (js *JavascriptGenerator) writeMethods(methods []FuncDecl, writer *bytes.Buffer) {
 	indent := js.options.indent
 	for _, fn := range methods {
 		writeIndent(indent, writer)
@@ -251,7 +245,7 @@ func (js *JavascriptGenerator) writeMethods(methods []FuncDecl, writer *bufio.Wr
 	writer.WriteString("}\n")
 }
 
-func (js *JavascriptGenerator) writeConstructor(fields []Field, writer *bufio.Writer) {
+func (js *JavascriptGenerator) writeConstructor(fields []Field, writer *bytes.Buffer) {
 	indent := js.options.indent
 	writer.WriteString("constructor(")
 	joiner := newJoiner()
@@ -271,7 +265,7 @@ func (js *JavascriptGenerator) writeConstructor(fields []Field, writer *bufio.Wr
 	writer.WriteString("}\n")
 }
 
-func (goGen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
+func (goGen *GoGenerator) writeFields(fields []Field, writer *bytes.Buffer) {
 	indent := goGen.options.indent
 	for _, field := range fields {
 		writeIndent(indent, writer)
@@ -280,7 +274,7 @@ func (goGen *GoGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 	}
 }
 
-func (goGen *GoGenerator) writeField(field Field, writer *bufio.Writer) {
+func (goGen *GoGenerator) writeField(field Field, writer *bytes.Buffer) {
 	writer.WriteString(field.varName + " ")
 	if field.hasModifier(FIELD_ARRAY) {
 		writer.WriteString("[]")
@@ -288,7 +282,7 @@ func (goGen *GoGenerator) writeField(field Field, writer *bufio.Writer) {
 	writer.WriteString(field.typeName)
 }
 
-func (java *JavaGenerator) writeField(field Field, writer *bufio.Writer) {
+func (java *JavaGenerator) writeField(field Field, writer *bytes.Buffer) {
 	writer.WriteString(field.typeName)
 	if field.hasModifier(FIELD_ARRAY) {
 		writer.WriteString("[]")
@@ -296,7 +290,7 @@ func (java *JavaGenerator) writeField(field Field, writer *bufio.Writer) {
 	writer.WriteString(" " + field.varName)
 }
 
-func (kotlin *KotlinGenerator) writeField(field Field, writer *bufio.Writer) {
+func (kotlin *KotlinGenerator) writeField(field Field, writer *bytes.Buffer) {
 	if field.hasModifier(FIELD_CONST) {
 		writer.WriteString("val ")
 	} else {
@@ -317,7 +311,7 @@ func (kotlin *KotlinGenerator) writeField(field Field, writer *bufio.Writer) {
 	}
 }
 
-func (kotlin *KotlinGenerator) writeMethodArgument(field Field, writer *bufio.Writer) {
+func (kotlin *KotlinGenerator) writeMethodArgument(field Field, writer *bytes.Buffer) {
 	writer.WriteString(field.varName + ": ")
 	isList := field.hasModifier(FIELD_ARRAY)
 	if isList {
@@ -333,7 +327,7 @@ func (kotlin *KotlinGenerator) writeMethodArgument(field Field, writer *bufio.Wr
 	}
 }
 
-func (rust *RustGenerator) writeFields(fields []Field, writer *bufio.Writer) {
+func (rust *RustGenerator) writeFields(fields []Field, writer *bytes.Buffer) {
 	indent := rust.options.indent
 	for _, field := range fields {
 		writeIndent(indent, writer)
@@ -344,7 +338,7 @@ func (rust *RustGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 	}
 }
 
-func (rust *RustGenerator) writeFieldType(field Field, writer *bufio.Writer) {
+func (rust *RustGenerator) writeFieldType(field Field, writer *bytes.Buffer) {
 	isList := field.hasModifier(FIELD_ARRAY)
 	if isList {
 		writer.WriteString("Vec<")
@@ -358,7 +352,7 @@ func (rust *RustGenerator) writeFieldType(field Field, writer *bufio.Writer) {
 	}
 }
 
-func (goGen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+func (goGen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bytes.Buffer) {
 	for _, fn := range typeDecl.methods {
 		receiver := goGen.toReceiverName(typeDecl.typeName)
 
@@ -382,7 +376,7 @@ func (goGen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) 
 	}
 }
 
-func (kotlin *KotlinGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+func (kotlin *KotlinGenerator) writeMethods(typeDecl TypeDecl, writer *bytes.Buffer) {
 	indent := kotlin.options.indent
 	for _, fn := range typeDecl.methods {
 		writeIndent(indent, writer)
@@ -408,7 +402,7 @@ func (kotlin *KotlinGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Wri
 	}
 }
 
-func (rust *RustGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+func (rust *RustGenerator) writeMethods(typeDecl TypeDecl, writer *bytes.Buffer) {
 	indent := rust.options.indent
 	for _, fn := range typeDecl.methods {
 		writeIndent(indent, writer)
@@ -454,7 +448,7 @@ func capitalizeFirstLetter(str string) string {
 	return strings.ToUpper(string(str[0])) + str[1:]
 }
 
-func (java *JavaGenerator) writeFields(fields []Field, writer *bufio.Writer) {
+func (java *JavaGenerator) writeFields(fields []Field, writer *bytes.Buffer) {
 	indent := java.options.indent
 	for _, field := range fields {
 		writeIndent(indent, writer)
@@ -469,7 +463,7 @@ func (java *JavaGenerator) writeFields(fields []Field, writer *bufio.Writer) {
 	}
 }
 
-func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
+func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bytes.Buffer) {
 	indent := java.options.indent
 	writeIndent(indent, writer)
 	writer.WriteString(t.typeName + "(")
@@ -491,7 +485,7 @@ func (java *JavaGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
 	writer.WriteString("}\n")
 }
 
-func (kotlin *KotlinGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer) {
+func (kotlin *KotlinGenerator) writeConstructor(t TypeDecl, writer *bytes.Buffer) {
 	indent := kotlin.options.indent
 	writer.WriteString("(\n")
 	join := newJoiner()
@@ -505,7 +499,7 @@ func (kotlin *KotlinGenerator) writeConstructor(t TypeDecl, writer *bufio.Writer
 	writer.WriteString("\n)")
 }
 
-func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bufio.Writer) {
+func (java *JavaGenerator) writeMethods(typeDecl TypeDecl, writer *bytes.Buffer) {
 	indent := java.options.indent
 	for _, fn := range typeDecl.methods {
 		writeIndent(indent, writer)
@@ -549,7 +543,7 @@ func (j *Joiner) reset() {
 	j.firstCall = true
 }
 
-func writeIndent(indent int, writer *bufio.Writer) {
+func writeIndent(indent int, writer *bytes.Buffer) {
 	for i := 0; i < indent; i++ {
 		writer.WriteByte(' ')
 	}
