@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"strings"
 	"testing"
@@ -55,12 +54,10 @@ func TestJSGen(t *testing.T) {
 		},
 	}
 
-	// Mock in-memory buffer
-	var buffer bytes.Buffer
-	writer := bufio.NewWriter(&buffer)
+	buffer := bytes.Buffer{}
 
 	js := JavascriptGenerator{defaultOptions()}
-	js.generate([]TypeDecl{catDecl}, writer)
+	js.generate([]TypeDecl{catDecl}, &buffer)
 
 	output := buffer.String()
 	t.Log("\n" + output)

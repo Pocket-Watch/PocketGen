@@ -366,38 +366,36 @@ func ParseFile(parser *Parser) ParserResult {
 	return parserOk()
 }
 
-func CheckForTypeRedeclarations(parser *Parser, decl TypeDecl, pos int) ParserResult {
-	for i, otherDecl := range parser.structs {
-		if i == pos {
-			continue
-		}
+func CheckForTypeRedeclarations(parser *Parser, decl TypeDecl, structSet *StringSet) ParserResult {
+	if structSet.Contains(decl.typeName) {
+		// Find the first declaration to display more detailed information about it
+		for _, firstDecl := range parser.structs {
 
-		if decl.typeName == otherDecl.typeName {
-			firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, decl.line.number, decl.line.offset, decl.typeName)
-			secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, otherDecl.line.number, otherDecl.line.offset, otherDecl.typeName)
-			message := fmt.Sprintf("ERROR: Type '%s' was declared multiple times:\n%s\n%s\n", decl.typeName, firstDeclare, secondDeclare)
-			result := ParserResult{
-				success: false,
-				message: message,
+			if firstDecl.typeName == decl.typeName {
+				firstDeclare := fmt.Sprintf("  %s:%v:%v First declaration of '%s'.", parser.filepath, firstDecl.line.number, firstDecl.line.offset, firstDecl.typeName)
+				secondDeclare := fmt.Sprintf("  %s:%v:%v Second declaration of '%s'.", parser.filepath, decl.line.number, decl.line.offset, decl.typeName)
+				message := fmt.Sprintf("ERROR: Type '%s' was declared multiple times:\n%s\n%s\n", decl.typeName, firstDeclare, secondDeclare)
+				result := ParserResult{
+					success: false,
+					message: message,
+				}
+				return result
 			}
-
-			return result
 		}
+		// Unreachable
 	}
 
 	return parserOk()
 }
 
-func VerifyFieldType(parser *Parser, field *Field) ParserResult {
+func VerifyFieldType(parser *Parser, field *Field, structSet *StringSet) ParserResult {
 	if slices.Contains(PRIMITIVES, field.typeName) {
 		addModifier(field, FIELD_PRIMITIVE)
 		return parserOk()
 	}
 
-	for _, decl := range parser.structs {
-		if decl.typeName == field.typeName {
-			return parserOk()
-		}
+	if structSet.Contains(field.typeName) {
+		return parserOk()
 	}
 
 	message := fmt.Sprintf("ERROR @ %s:%v:%v Type of field '%s' was never declared.", parser.filepath, field.typeLine.number, field.typeLine.offset, field.typeName)
@@ -409,22 +407,16 @@ func VerifyFieldType(parser *Parser, field *Field) ParserResult {
 	return result
 }
 
-func VerifyType(parser *Parser, typename string) bool {
+func VerifyType(structSet *StringSet, typename string) bool {
 	if slices.Contains(PRIMITIVES, typename) {
 		return true
 	}
 
-	for _, decl := range parser.structs {
-		if decl.typeName == typename {
-			return true
-		}
-	}
-
-	return false
+	return structSet.Contains(typename)
 }
 
-func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *FuncDecl) ParserResult {
-	if funcDecl.returnType != "" && !VerifyType(parser, funcDecl.returnType) {
+func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *FuncDecl, structSet *StringSet) ParserResult {
+	if funcDecl.returnType != "" && !VerifyType(structSet, funcDecl.returnType) {
 		message := fmt.Sprintf("ERROR @ %s:%v:%v Return type '%s', of method '%s::%s' is undeclared.", parser.filepath, funcDecl.returnLine.number, funcDecl.returnLine.offset, funcDecl.returnType, parentType.typeName, funcDecl.name)
 		result := ParserResult{
 			success: false,
@@ -436,7 +428,7 @@ func VerifyFunctionDeclaration(parser *Parser, parentType TypeDecl, funcDecl *Fu
 
 	for i := range funcDecl.fields {
 		field := &funcDecl.fields[i]
-		result := VerifyFieldType(parser, field)
+		result := VerifyFieldType(parser, field, structSet)
 		if !result.success {
 			return result
 		}
@@ -473,19 +465,25 @@ func CheckForFieldRedeclarations(parser *Parser, fields []Field, field Field, po
 }
 
 func TypecheckFile(parser *Parser) ParserResult {
-	for i, decl := range parser.structs {
+	structSet := NewSet(len(parser.structs))
+	// Populate set now with one pass to prevent O(n^2) complexity later
+	for _, decl := range parser.structs {
 		if slices.Contains(PRIMITIVES, decl.typeName) {
 			return parser.parserErrorMessage(decl.line, "Declared type uses reserved name for type primitives.")
 		}
 
-		result := CheckForTypeRedeclarations(parser, decl, i)
+		result := CheckForTypeRedeclarations(parser, decl, structSet)
 		if !result.success {
 			return result
 		}
 
+		structSet.Add(decl.typeName)
+	}
+
+	for i, decl := range parser.structs {
 		for j := range decl.fields {
 			field := &parser.structs[i].fields[j]
-			result := VerifyFieldType(parser, field)
+			result := VerifyFieldType(parser, field, structSet)
 			if !result.success {
 				return result
 			}
@@ -498,7 +496,7 @@ func TypecheckFile(parser *Parser) ParserResult {
 
 		for j := range decl.methods {
 			funcDecl := &parser.structs[i].methods[j]
-			result := VerifyFunctionDeclaration(parser, decl, funcDecl)
+			result := VerifyFunctionDeclaration(parser, decl, funcDecl, structSet)
 			if !result.success {
 				return result
 			}
@@ -506,6 +504,25 @@ func TypecheckFile(parser *Parser) ParserResult {
 	}
 
 	return parserOk()
+}
+
+type StringSet struct {
+	set map[string]bool
+}
+
+func (s *StringSet) Contains(el string) bool {
+	_, contains := s.set[el]
+	return contains
+}
+
+func (s *StringSet) Add(el string) {
+	s.set[el] = true
+}
+
+func NewSet(capacity int) *StringSet {
+	return &StringSet{
+		make(map[string]bool, capacity),
+	}
 }
 
 func RunScratchParser(path string) {

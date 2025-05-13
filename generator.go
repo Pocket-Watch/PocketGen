@@ -11,7 +11,6 @@ import (
 
 type GeneratorOptions struct {
 	indent               int
-	separateDefinitions  bool
 	packageName          string
 	receiverNameFallback string
 }
@@ -20,7 +19,6 @@ type GeneratorOptions struct {
 func defaultOptions() GeneratorOptions {
 	return GeneratorOptions{
 		indent:               4,
-		separateDefinitions:  true,
 		packageName:          "main",
 		receiverNameFallback: "this",
 	}
@@ -104,7 +102,7 @@ func (js *JavascriptGenerator) generate(types []TypeDecl, writer *bytes.Buffer) 
 	indent := js.options.indent
 	joiner := newJoiner()
 	for _, t := range types {
-		if joiner.join() && js.options.separateDefinitions {
+		if joiner.join() {
 			writer.WriteString("\n")
 		}
 		writer.WriteString("class " + t.typeName + " {\n")
@@ -127,7 +125,7 @@ func (goGen *GoGenerator) generate(types []TypeDecl, writer *bytes.Buffer, filep
 
 	typeJoiner := newJoiner()
 	for _, t := range types {
-		if typeJoiner.join() && goGen.options.separateDefinitions {
+		if typeJoiner.join() {
 			writer.WriteString("\n")
 		}
 		writer.WriteString("type " + t.typeName + " struct {\n")
@@ -150,7 +148,7 @@ func (java *JavaGenerator) generate(types []TypeDecl, writer *bytes.Buffer, file
 	joiner := newJoiner()
 	// May require specifying package name
 	for _, t := range types {
-		if joiner.join() && java.options.separateDefinitions {
+		if joiner.join() {
 			writer.WriteString("\n")
 		}
 		writer.WriteString("class " + t.typeName + " {\n")
@@ -177,7 +175,7 @@ func (kotlin *KotlinGenerator) generate(types []TypeDecl, writer *bytes.Buffer, 
 	joiner := newJoiner()
 	// May require specifying package name
 	for _, t := range types {
-		if joiner.join() && kotlin.options.separateDefinitions {
+		if joiner.join() {
 			writer.WriteString("\n")
 		}
 		// Data classes cannot be empty
@@ -210,7 +208,7 @@ func (rust *RustGenerator) generate(types []TypeDecl, writer *bytes.Buffer, file
 	joiner := newJoiner()
 	// May require specifying mod name
 	for _, t := range types {
-		if joiner.join() && rust.options.separateDefinitions {
+		if joiner.join() {
 			writer.WriteString("\n")
 		}
 		writer.WriteString("struct " + t.typeName + " {\n")
