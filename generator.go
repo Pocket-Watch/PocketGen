@@ -7,6 +7,8 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 type GeneratorOptions struct {
@@ -443,7 +445,11 @@ func capitalizeFirstLetter(str string) string {
 	if len(str) == 0 {
 		return str
 	}
-	return strings.ToUpper(string(str[0])) + str[1:]
+
+	r, size := utf8.DecodeRuneInString(str)
+	upperRune := unicode.ToUpper(r)
+
+	return string(upperRune) + str[size:]
 }
 
 func (java *JavaGenerator) writeFields(fields []Field, writer *bytes.Buffer) {
@@ -555,6 +561,27 @@ func openWriter(filename string) *bufio.Writer {
 	}
 
 	return bufio.NewWriter(file)
+}
+
+func toSnakeCase(pascalCase string) string {
+	snakeCase := strings.Builder{}
+
+	firstRune := true
+	for len(pascalCase) > 0 {
+		r, size := utf8.DecodeRuneInString(pascalCase)
+		if unicode.IsUpper(r) {
+			if !firstRune {
+				snakeCase.WriteByte('_')
+			}
+			snakeCase.WriteRune(unicode.ToLower(r))
+		} else {
+			snakeCase.WriteRune(r)
+		}
+		firstRune = false
+
+		pascalCase = pascalCase[size:]
+	}
+	return snakeCase.String()
 }
 
 // Type mappers

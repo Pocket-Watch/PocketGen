@@ -80,6 +80,51 @@ func TestJSGen(t *testing.T) {
 	compareLines(expectedLines, lines, t)
 }
 
+func TestBasicToSnakeCase(t *testing.T) {
+	input := "theOldestBook"
+	expected := "the_oldest_book"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestUnicodeToSnakeCase(t *testing.T) {
+	input := "onTheЯight"
+	expected := "on_the_яight"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestGoStyleVarToSnakeCase(t *testing.T) {
+	input := "GoVariable"
+	expected := "go_variable"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestBasicCapitalizeFirstLetter(t *testing.T) {
+	input := "cake"
+	expected := "Cake"
+	actual := capitalizeFirstLetter(input)
+	if actual != expected {
+		t.Error("Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestUnicodeCapitalizeFirstLetter(t *testing.T) {
+	input := "тrait"
+	expected := "Тrait"
+	actual := capitalizeFirstLetter(input)
+	if actual != expected {
+		t.Error("Expected:", expected, "  Got:", actual)
+	}
+}
+
 func compareLines(expectedLines []string, lines []string, t *testing.T) {
 	if len(lines) != len(expectedLines) {
 		t.Errorf("Different number of lines: actual = %d, expected = %d", len(lines), len(expectedLines))

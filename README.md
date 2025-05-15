@@ -2,9 +2,10 @@
 Language code meta generator
 
 ## Supported languages:
-- Java
 - Go
+- Java
 - JavaScript
+- Kotlin
 - Rust
 
 ## Language constructs
