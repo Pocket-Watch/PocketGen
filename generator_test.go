@@ -107,6 +107,51 @@ func TestGoStyleVarToSnakeCase(t *testing.T) {
 	}
 }
 
+func TestOverCapitalizationSnakeCase(t *testing.T) {
+	input := "v_1_V_3"
+	expected := "v_1_v_3"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestNoTrailingSnakeCase(t *testing.T) {
+	input := "whatS"
+	expected := "what_s"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestTrailingSnakeCase(t *testing.T) {
+	input := "AbC_"
+	expected := "ab_c_"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestUnicodeSnakeCase(t *testing.T) {
+	input := "umlautÜ"
+	expected := "umlaut_ü"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestManyUnderscores(t *testing.T) {
+	input := "_1_2__3___Z"
+	expected := "_1_2__3___z"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
 func TestBasicCapitalizeFirstLetter(t *testing.T) {
 	input := "cake"
 	expected := "Cake"

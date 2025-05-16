@@ -15,6 +15,7 @@ type GeneratorOptions struct {
 	indent               int
 	packageName          string
 	receiverNameFallback string
+	jsonAnnotations      bool
 }
 
 // These require validation against specific languages
@@ -23,6 +24,7 @@ func defaultOptions() GeneratorOptions {
 		indent:               4,
 		packageName:          "main",
 		receiverNameFallback: "this",
+		jsonAnnotations:      true,
 	}
 }
 
@@ -269,17 +271,21 @@ func (goGen *GoGenerator) writeFields(fields []Field, writer *bytes.Buffer) {
 	indent := goGen.options.indent
 	for _, field := range fields {
 		writeIndent(indent, writer)
-		goGen.writeField(field, writer)
+		goGen.writeField(field, true, writer)
 		writer.WriteString("\n")
 	}
 }
 
-func (goGen *GoGenerator) writeField(field Field, writer *bytes.Buffer) {
+func (goGen *GoGenerator) writeField(field Field, inType bool, writer *bytes.Buffer) {
 	writer.WriteString(field.varName + " ")
 	if field.hasModifier(FIELD_ARRAY) {
 		writer.WriteString("[]")
 	}
 	writer.WriteString(field.typeName)
+	if inType && goGen.options.jsonAnnotations {
+		snakeCase := toSnakeCase(field.varName)
+		writer.WriteString(" `json:\"" + snakeCase + "\"`")
+	}
 }
 
 func (java *JavaGenerator) writeField(field Field, writer *bytes.Buffer) {
@@ -364,7 +370,7 @@ func (goGen *GoGenerator) writeMethods(typeDecl TypeDecl, writer *bytes.Buffer) 
 			if joiner.join() {
 				writer.WriteString(", ")
 			}
-			goGen.writeField(field, writer)
+			goGen.writeField(field, false, writer)
 		}
 		writer.WriteString(") ")
 		if fn.returnType != "" {
@@ -566,21 +572,25 @@ func openWriter(filename string) *bufio.Writer {
 func toSnakeCase(pascalCase string) string {
 	snakeCase := strings.Builder{}
 
-	firstRune := true
-	for len(pascalCase) > 0 {
-		r, size := utf8.DecodeRuneInString(pascalCase)
-		if unicode.IsUpper(r) {
-			if !firstRune {
+	var previousRune rune
+	for pos, char := range pascalCase {
+		if unicode.IsUpper(char) {
+			// First rune - don't prefix with underscore
+			if pos == 0 {
+				previousRune = char
+				snakeCase.WriteRune(unicode.ToLower(char))
+				continue
+			}
+			if previousRune != '_' {
 				snakeCase.WriteByte('_')
 			}
-			snakeCase.WriteRune(unicode.ToLower(r))
+			snakeCase.WriteRune(unicode.ToLower(char))
 		} else {
-			snakeCase.WriteRune(r)
+			snakeCase.WriteRune(char)
 		}
-		firstRune = false
-
-		pascalCase = pascalCase[size:]
+		previousRune = char
 	}
+
 	return snakeCase.String()
 }
 
