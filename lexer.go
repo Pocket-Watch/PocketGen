@@ -13,6 +13,7 @@ type TokenType = int
 const (
 	TOKEN_EOF TokenType = iota
 	TOKEN_ERROR
+	TOKEN_UNKNOWN_SYMBOL
 	TOKEN_KEYWORD
 	TOKEN_IDENTIFIER
 	TOKEN_COMMA
@@ -35,6 +36,7 @@ type TokenAsString struct {
 var TOKEN_LOOKUP = []TokenAsString{
 	{"TOKEN_EOF", "eof", "end of file"},
 	{"TOKEN_ERROR", "error", "error"},
+	{"TOKEN_UNKNOWN_SYMBOL", "unknown symbol", "unknown"},
 	{"TOKEN_KEYWORD", "keyword", "keyword"},
 	{"TOKEN_IDENTIFIER", "identifier", "identifier"},
 	{"TOKEN_COMMA", "comma", ","},
@@ -74,6 +76,9 @@ func TokenValueToString(token Token) string {
 	case TOKEN_KEYWORD, TOKEN_IDENTIFIER:
 		return token.tokenValue.string
 
+	case TOKEN_UNKNOWN_SYMBOL:
+		return string(token.tokenValue.rune)
+
 	default:
 		return TOKEN_LOOKUP[tokenType].value
 	}
@@ -83,7 +88,6 @@ type TokenErrorType = int
 
 const (
 	ERROR_INVALID_RUNE_ENCODING TokenErrorType = iota
-	ERROR_UNKNOWN_RUNE_SYMBOL
 	ERROR_UNCLOSED_STRING
 	ERROR_UNCLOSED_BLOCK_COMMENT
 )
@@ -114,6 +118,7 @@ var PRIMITIVES = []string{
 // TokenValue union, matched with TokenType. Go has no unions so this one is fat.
 type TokenValue struct {
 	string string
+	rune   rune
 	int    int
 }
 
@@ -189,6 +194,17 @@ func makeToken(tokenType TokenType, line LinePos) Token {
 	token := Token{
 		line:      line,
 		tokenType: tokenType,
+	}
+
+	return token
+}
+
+func makeUnknownSymbol(symbol rune, line LinePos) Token {
+	value := TokenValue{rune: symbol}
+	token := Token{
+		line:       line,
+		tokenType:  TOKEN_UNKNOWN_SYMBOL,
+		tokenValue: value,
 	}
 
 	return token
@@ -339,7 +355,7 @@ var nextToken = func(lexer *Lexer) Token {
 		default:
 			word, ok := parseWord(lexer)
 			if !ok {
-				return makeError(ERROR_UNKNOWN_RUNE_SYMBOL, line)
+				return makeUnknownSymbol(rune, line)
 			}
 
 			if slices.Contains(KEYWORDS, word) {
