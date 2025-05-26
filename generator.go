@@ -277,7 +277,11 @@ func (goGen *GoGenerator) writeFields(fields []Field, writer *bytes.Buffer) {
 }
 
 func (goGen *GoGenerator) writeField(field Field, inType bool, writer *bytes.Buffer) {
-	writer.WriteString(field.varName + " ")
+	varName := field.varName
+	if inType && goGen.options.jsonAnnotations {
+		varName = capitalizeFirstLetter(varName)
+	}
+	writer.WriteString(varName + " ")
 	if field.hasModifier(FIELD_ARRAY) {
 		writer.WriteString("[]")
 	}
@@ -449,13 +453,11 @@ func (goGen *GoGenerator) toReceiverName(name string) string {
 
 func capitalizeFirstLetter(str string) string {
 	if len(str) == 0 {
-		return str
+		return ""
 	}
-
 	r, size := utf8.DecodeRuneInString(str)
-	upperRune := unicode.ToUpper(r)
-
-	return string(upperRune) + str[size:]
+	r = unicode.ToUpper(r)
+	return string(r) + str[size:]
 }
 
 func (java *JavaGenerator) writeFields(fields []Field, writer *bytes.Buffer) {
@@ -569,6 +571,7 @@ func openWriter(filename string) *bufio.Writer {
 	return bufio.NewWriter(file)
 }
 
+// toSnakeCase separates uppercase letters with underscores, except for three or more adjacent ones.
 func toSnakeCase(pascalCase string) string {
 	snakeCase := strings.Builder{}
 
@@ -581,7 +584,7 @@ func toSnakeCase(pascalCase string) string {
 				snakeCase.WriteRune(unicode.ToLower(char))
 				continue
 			}
-			if previousRune != '_' {
+			if previousRune != '_' && (unicode.IsLower(previousRune) || isNextRuneLower(pascalCase[len(string(char))+pos:])) {
 				snakeCase.WriteByte('_')
 			}
 			snakeCase.WriteRune(unicode.ToLower(char))
@@ -592,6 +595,14 @@ func toSnakeCase(pascalCase string) string {
 	}
 
 	return snakeCase.String()
+}
+
+func isNextRuneLower(str string) bool {
+	r, _ := utf8.DecodeRuneInString(str)
+	if r == utf8.RuneError {
+		return false
+	}
+	return unicode.IsLower(r)
 }
 
 // Type mappers

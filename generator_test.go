@@ -152,6 +152,42 @@ func TestManyUnderscores(t *testing.T) {
 	}
 }
 
+func TestTwoUppercasePascalLetters(t *testing.T) {
+	input := "takeABreak"
+	expected := "take_a_break"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestConstCase(t *testing.T) {
+	input := "simpleXMLFile"
+	expected := "simple_xml_file"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestEndInTwoUppers(t *testing.T) {
+	input := "popTG"
+	expected := "pop_tg"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
+func TestEndInTwoUppersButUnderscored(t *testing.T) {
+	input := "pop_TG"
+	expected := "pop_tg"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
 func TestBasicCapitalizeFirstLetter(t *testing.T) {
 	input := "cake"
 	expected := "Cake"
