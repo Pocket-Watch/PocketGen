@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -13,19 +14,11 @@ import (
 const EXTENSION = ".tg"
 
 func executeCLI() {
-	exec, err := os.Executable()
-	if err != nil {
-		exec = ""
-	}
-	args := os.Args
-	if len(args) < 3 {
-		fmt.Println("Usage:")
-		fmt.Printf("  %v <file path/directory> <language>\n", exec)
-		fmt.Println()
+	args := os.Args[1:]
+	if len(args) < 2 {
+		printHelp()
 		return
 	}
-	args = args[1:]
-
 	path := args[0]
 
 	info, err := getPathInfo(path)
@@ -37,9 +30,11 @@ func executeCLI() {
 	lang := args[1]
 	language := languageIdentifierToLanguage(lang)
 	if language == NONE {
-		fmt.Println("Unrecognized, unsupported or misspelled language identifier.")
+		fmt.Printf("ERROR: Unrecognized, unsupported or misspelled language identifier: %v\n", lang)
 		os.Exit(1)
 	}
+
+	options := parseArguments(args[2:])
 
 	var files []string
 	if info.IsDir() {
@@ -89,31 +84,31 @@ func executeCLI() {
 
 		switch language {
 		case JAVASCRIPT:
-			js := JavascriptGenerator{defaultOptions()}
+			js := JavascriptGenerator{options}
 			js.generate(parser.structs, &codeBuffer)
 		case GO:
-			goGen := GoGenerator{defaultOptions()}
+			goGen := GoGenerator{options}
 			err = goGen.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case JAVA:
-			java := JavaGenerator{defaultOptions()}
+			java := JavaGenerator{options}
 			err = java.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case KOTLIN:
-			kotlin := KotlinGenerator{defaultOptions()}
+			kotlin := KotlinGenerator{options}
 			err = kotlin.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
 				os.Exit(1)
 			}
 		case RUST:
-			rust := RustGenerator{defaultOptions()}
+			rust := RustGenerator{options}
 			err = rust.generate(parser.structs, &codeBuffer, parser.filepath)
 			if err != nil {
 				fmt.Println(err)
@@ -141,6 +136,52 @@ func executeCLI() {
 	end := time.Now()
 	timeElapsed := end.Sub(start)
 	fmt.Printf("Time elapsed processing: %v\n", timeElapsed)
+}
+
+// Method parseArguments parses arguments starting from index 0, returns generator options.
+// On error exits with code 1. If help is passed as argument it's displayed and the program exits.
+func parseArguments(args []string) GeneratorOptions {
+	options := defaultOptions()
+	for i := 0; i < len(args); i++ {
+		switch args[i] {
+		case "-h", "--help":
+			printHelp()
+			os.Exit(0)
+		case "--json":
+			options.jsonAnnotations = true
+		case "--indent":
+			if i+1 >= len(args) {
+				fmt.Println("ERROR: No argument passed for indentation")
+				os.Exit(1)
+			}
+			indent, err := strconv.Atoi(args[i+1])
+			if err != nil || indent < 1 {
+				fmt.Printf("ERROR: Invalid indentation: %v\n", args[i+1])
+				os.Exit(1)
+			}
+			options.indent = indent
+			i++
+		default:
+			fmt.Println("WARN: Unknown option", args[i])
+		}
+	}
+
+	return options
+}
+
+func printHelp() {
+	exec, err := os.Executable()
+	if err == nil {
+		exec = filepath.Base(exec)
+	} else {
+		exec = ""
+	}
+	fmt.Println("Usage:")
+	fmt.Printf("  %v <file path/directory> <language> [options...]\n", exec)
+	fmt.Println("Options:")
+	fmt.Println("    --json                Generate JSON-annotations")
+	fmt.Println("    --indent [number]     Specify code indentation level")
+	fmt.Println("    -h, --help            Display this help message")
 }
 
 func changeExtension(file string, newExtension string) string {

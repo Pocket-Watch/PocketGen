@@ -24,7 +24,7 @@ func defaultOptions() GeneratorOptions {
 		indent:               4,
 		packageName:          "main",
 		receiverNameFallback: "this",
-		jsonAnnotations:      true,
+		jsonAnnotations:      false,
 	}
 }
 
