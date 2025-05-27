@@ -170,6 +170,15 @@ func TestConstCase(t *testing.T) {
 	}
 }
 
+func TestOnlyTwoUppers(t *testing.T) {
+	input := "TU"
+	expected := "tu"
+	actual := toSnakeCase(input)
+	if actual != expected {
+		t.Error("Input: ", input, "  Expected:", expected, "  Got:", actual)
+	}
+}
+
 func TestEndInTwoUppers(t *testing.T) {
 	input := "popTG"
 	expected := "pop_tg"

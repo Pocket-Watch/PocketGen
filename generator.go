@@ -439,7 +439,7 @@ func (rust *RustGenerator) writeMethods(typeDecl TypeDecl, writer *bytes.Buffer)
 // This
 func (goGen *GoGenerator) toReceiverName(name string) string {
 	firstByte := name[0]
-	if (firstByte < 'A' || firstByte > 'Z') && (firstByte < 'a' || firstByte > 'z') {
+	if isASCIILetter(rune(firstByte)) {
 		// Let's only use ASCII letters for receivers
 		return goGen.options.receiverNameFallback
 	}
@@ -458,6 +458,10 @@ func capitalizeFirstLetter(str string) string {
 	r, size := utf8.DecodeRuneInString(str)
 	r = unicode.ToUpper(r)
 	return string(r) + str[size:]
+}
+
+func isASCIILetter(r rune) bool {
+	return r <= 127 && unicode.IsLetter(r)
 }
 
 func (java *JavaGenerator) writeFields(fields []Field, writer *bytes.Buffer) {

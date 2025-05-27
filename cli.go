@@ -161,6 +161,17 @@ func parseArguments(args []string) GeneratorOptions {
 			}
 			options.indent = indent
 			i++
+		case "--receiver-fallback":
+			if i+1 >= len(args) {
+				fmt.Println("ERROR: No argument passed for receiver fallback")
+				os.Exit(1)
+			}
+			if len(args[i+1]) < 1 {
+				fmt.Printf("ERROR: Receiver name is too short: %v\n", args[i+1])
+				os.Exit(1)
+			}
+			options.receiverNameFallback = args[i+1]
+			i++
 		default:
 			fmt.Println("WARN: Unknown option", args[i])
 		}
@@ -179,9 +190,10 @@ func printHelp() {
 	fmt.Println("Usage:")
 	fmt.Printf("  %v <file path/directory> <language> [options...]\n", exec)
 	fmt.Println("Options:")
-	fmt.Println("    --json                Generate JSON-annotations")
-	fmt.Println("    --indent [number]     Specify code indentation level")
-	fmt.Println("    -h, --help            Display this help message")
+	fmt.Println("    --json                        Generate JSON-annotations")
+	fmt.Println("    --indent [number]             Code indentation level")
+	fmt.Println("    --receiver-fallback [string]  Receiver name fallback for GO and C")
+	fmt.Println("    -h, --help                    Display this help message")
 }
 
 func changeExtension(file string, newExtension string) string {
@@ -215,8 +227,11 @@ const (
 	TYPESCRIPT
 	KOTLIN
 	JAVA
-	C_SHARP
+	CSHARP
 	RUST
+	C
+	CPP
+	PYTHON
 )
 
 func languageIdentifierToLanguage(lang string) Language {
@@ -234,7 +249,13 @@ func languageIdentifierToLanguage(lang string) Language {
 	case "rs", "rust":
 		return RUST
 	case "cs", "csharp":
-		return C_SHARP
+		return CSHARP
+	case "c":
+		return C
+	case "cpp", "c++", "cxx", "cc":
+		return CPP
+	case "py", "python":
+		return PYTHON
 	}
 	return NONE
 }
@@ -253,8 +274,14 @@ func languageToExtension(language Language) string {
 		return ".kt"
 	case RUST:
 		return ".rs"
-	case C_SHARP:
+	case CSHARP:
 		return ".cs"
+	case C:
+		return ".c"
+	case CPP:
+		return ".cpp"
+	case PYTHON:
+		return ".py"
 	default:
 		panic("language has an unmapped extension?")
 	}

@@ -1,6 +1,33 @@
 # PocketGen
 Language code meta generator
 
+
+## Converting tg representation to go
+```tg
+type Cat {
+    const string name;
+    u32 age;
+    # This a comment
+    func meow(string sound, u32 volume) string;
+}
+```
+
+```bash
+ tg test/cat.tg go --json
+```
+
+```go
+package main
+
+type Cat struct {
+    Name string `json:"name"`
+    Age  uint32 `json:"age"`
+}
+
+func (cat *Cat) meow(sound string, volume uint32) string {
+    panic("TODO: Unimplemented method")
+}
+```
 ## Supported languages:
 - Go
 - Java
